@@ -1,39 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-            fx:controller="org.tsumiyoku.familyhub.ui.BudgetController"
-            styleClass="root-bg">
+            fx:controller="org.tsumiyoku.familyhub.ui.BudgetController" styleClass="root-bg">
+
     <top>
-        <HBox spacing="12">
-            <padding><Insets topRightBottomLeft="12"/></padding>
-            <Label text="Budget" styleClass="section-title"/>
-            <Pane HBox.hgrow="ALWAYS"/>
-            <Button text="Stats" onAction="#onOpenStats"/>
-            <Button text="Nouveau" onAction="#onClear"/>
-            <Button text="Ajouter" onAction="#onAdd"/>
-            <Button text="Mettre à jour" onAction="#onUpdate"/>
-            <Button text="Supprimer" onAction="#onDelete"/>
-        </HBox>
+        <VBox spacing="6">
+            <padding>
+                <Insets topRightBottomLeft="12"/>
+            </padding>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="Budget" styleClass="section-title"/>
+                <Pane HBox.hgrow="ALWAYS"/>
+                <Label text="Devise par défaut:"/>
+                <Label fx:id="defaultCurLabel" styleClass="badge"/>
+                <Button text="Changer…" onAction="#onSetDefaultCurrency"/>
+                <Separator orientation="VERTICAL"/>
+                <Label text="Période:"/>
+                <DatePicker fx:id="filterStart"/>
+                <Label text="→"/>
+                <DatePicker fx:id="filterEnd"/>
+                <Button text="Rafraîchir" onAction="#onRefresh"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Parts cibles…" onAction="#onManageShares"/>
+                <Button text="Limites…" onAction="#onManageLimits"/>
+                <Button text="Analyses…" onAction="#onOpenStats"/>
+            </HBox>
+
+        </VBox>
     </top>
+
     <center>
         <SplitPane>
-            <VBox spacing="8">
-                <padding><Insets topRightBottomLeft="16"/></padding>
-                <DatePicker fx:id="dateField" promptText="Date"/>
-                <TextField fx:id="categoryField" promptText="Catégorie"/>
-                <TextField fx:id="amountField" promptText="Montant (nombre)"/>
-                <TextField fx:id="noteField" promptText="Note"/>
+            <!-- Saisie -->
+            <VBox spacing="10">
+                <padding>
+                    <Insets topRightBottomLeft="16"/>
+                </padding>
+
+                <TitledPane text="Nouvelle transaction">
+                    <VBox spacing="8">
+                        <padding>
+                            <Insets topRightBottomLeft="10"/>
+                        </padding>
+                        <HBox spacing="8">
+                            <DatePicker fx:id="txDate" promptText="Date"/>
+                            <ComboBox fx:id="categoryBox" promptText="Catégorie"/>
+                            <CheckBox fx:id="incomeCheck" text="Recette (+)"/>
+                        </HBox>
+                        <HBox spacing="8">
+                            <ComboBox fx:id="currencyBox" prefWidth="100" promptText="Devise"/>
+                            <TextField fx:id="amountField" promptText="Montant"/>
+                            <TextField fx:id="rateField" promptText="Taux vers devise par défaut (auto si connu)"/>
+                        </HBox>
+                        <HBox spacing="8">
+                            <ComboBox fx:id="payerBox" promptText="Payeur"/>
+                            <TextField fx:id="noteField" promptText="Note" HBox.hgrow="ALWAYS"/>
+                        </HBox>
+
+                        <TitledPane text="Participants &amp; parts (%)">
+                            <VBox spacing="6">
+                                <padding>
+                                    <Insets topRightBottomLeft="6"/>
+                                </padding>
+                                <TableView fx:id="participantsTable" prefHeight="200">
+                                    <columns>
+                                        <TableColumn fx:id="colPerson" text="Personne" prefWidth="180"/>
+                                        <TableColumn fx:id="colShare" text="Part (%)" prefWidth="100"/>
+                                    </columns>
+                                </TableView>
+                                <HBox spacing="8">
+                                    <Button fx:id="btnSplitEqual" text="Répartir à parts égales"
+                                            onAction="#onSplitEqual"/>
+                                    <Label text="(double-clic pour modifier une part)"/>
+                                </HBox>
+                            </VBox>
+                        </TitledPane>
+
+                        <HBox spacing="8" alignment="CENTER_RIGHT">
+                            <Button text="Catégories…" onAction="#onManageCategories"/>
+                            <Button text="Taux de change…" onAction="#onManageRates"/>
+                            <Pane HBox.hgrow="ALWAYS"/>
+                            <Button text="Effacer" onAction="#onClear"/>
+                            <Button text="Ajouter" onAction="#onAdd"/>
+                            <Button text="Mettre à jour" onAction="#onUpdate"/>
+                            <Button text="Supprimer" onAction="#onDelete"/>
+                        </HBox>
+                    </VBox>
+                </TitledPane>
             </VBox>
-            <TableView fx:id="table">
-                <columns>
-                    <TableColumn fx:id="col1" text="Col1"/>
-                    <TableColumn fx:id="col2" text="Col2"/>
-                    <TableColumn fx:id="col3" text="Col3"/>
-                    <TableColumn fx:id="col4" text="Col4"/>
-                </columns>
-            </TableView>
+
+            <!-- Liste -->
+            <VBox spacing="6">
+                <padding>
+                    <Insets topRightBottomLeft="10"/>
+                </padding>
+                <TableView fx:id="table" onMouseClicked="#onSelectTx">
+                    <columns>
+                        <TableColumn fx:id="tcolDate" text="Date" prefWidth="100"/>
+                        <TableColumn fx:id="tcolCat" text="Catégorie" prefWidth="150"/>
+                        <TableColumn fx:id="tcolPayer" text="Payeur" prefWidth="120"/>
+                        <TableColumn fx:id="tcolCur" text="Devise" prefWidth="70"/>
+                        <TableColumn fx:id="tcolAmount" text="Montant" prefWidth="100"/>
+                        <TableColumn fx:id="tcolDef" text="Montant (devise par défaut)" prefWidth="180"/>
+                        <TableColumn fx:id="tcolNote" text="Note" prefWidth="240"/>
+                    </columns>
+                </TableView>
+            </VBox>
         </SplitPane>
     </center>
 </BorderPane>

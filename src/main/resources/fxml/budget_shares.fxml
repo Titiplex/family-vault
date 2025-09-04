@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.tsumiyoku.familyhub.ui.BudgetSharesController" spacing="10">
+    <padding>
+        <Insets topRightBottomLeft="12"/>
+    </padding>
+    <Label text="Parts cibles du foyer (doit totaliser 100%)" styleClass="section-title"/>
+    <TableView fx:id="table" editable="true">
+        <columns>
+            <TableColumn fx:id="colPerson" text="Personne" prefWidth="280"/>
+            <TableColumn fx:id="colShare" text="Part (%)" prefWidth="160"/>
+        </columns>
+    </TableView>
+    <HBox spacing="8" alignment="CENTER_RIGHT">
+        <Button fx:id="btnEqual" text="Répartir à parts égales" onAction="#onEqual"/>
+        <Pane HBox.hgrow="ALWAYS"/>
+        <Button text="Enregistrer" onAction="#onSave"/>
+    </HBox>
+</VBox>

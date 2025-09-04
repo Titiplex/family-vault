@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="org.tsumiyoku.familyhub.ui.CalendarController"
             styleClass="root-bg">
     <top>
         <HBox spacing="12">
-            <padding><Insets topRightBottomLeft="16"/></padding>
+            <padding>
+                <Insets topRightBottomLeft="16"/>
+            </padding>
             <Label text="Calendar" styleClass="section-title"/>
             <Pane HBox.hgrow="ALWAYS"/>
             <Button text="Nouveau" onAction="#onClear"/>
@@ -19,7 +21,9 @@
     <center>
         <SplitPane>
             <VBox spacing="8">
-                <padding><Insets topRightBottomLeft="16"/></padding>
+                <padding>
+                    <Insets topRightBottomLeft="16"/>
+                </padding>
                 <TextField fx:id="titleField" promptText="Titre"/>
                 <DatePicker fx:id="dateField" promptText="Date"/>
                 <TextField fx:id="locationField" promptText="Lieu"/>

@@ -1,25 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.chart.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="org.tsumiyoku.familyhub.ui.BudgetStatsController"
             styleClass="root-bg">
     <top>
         <HBox spacing="12">
-            <padding><Insets topRightBottomLeft="16"/></padding>
-            <Label text="Dépenses par catégorie" styleClass="section-title"/>
+            <padding>
+                <Insets topRightBottomLeft="12"/>
+            </padding>
+            <Label text="Analyses budget" styleClass="section-title"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Label text="Période:"/>
+            <DatePicker fx:id="startField"/>
+            <Label text="→"/>
+            <DatePicker fx:id="endField"/>
+            <Button text="Rafraîchir" onAction="#onRefresh"/>
+            <Separator orientation="VERTICAL"/>
+            <Label text="Afficher en:"/>
+            <ComboBox fx:id="displayCurrencyBox" prefWidth="90"/>
+            <Separator orientation="VERTICAL"/>
+            <Label text="Devise par défaut:"/>
+            <Label fx:id="defaultCur" styleClass="badge"/>
         </HBox>
     </top>
     <center>
-        <BarChart fx:id="chart" animated="false">
-            <xAxis>
-                <CategoryAxis label="Catégorie"/>
-            </xAxis>
-            <yAxis>
-                <NumberAxis label="Montant total"/>
-            </yAxis>
-        </BarChart>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+            <Tab text="Catégories">
+                <PieChart fx:id="pieCategories"/>
+            </Tab>
+            <Tab text="Par personne (réel)">
+                <BarChart fx:id="barByPerson">
+                    <xAxis>
+                        <CategoryAxis label="Personne"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis label="Payé - Dû"/>
+                    </yAxis>
+                </BarChart>
+            </Tab>
+            <Tab text="Écarts vs parts cibles">
+                <BarChart fx:id="barVsTargets">
+                    <xAxis>
+                        <CategoryAxis label="Personne"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis label="Écart (payé - part)"/>
+                    </yAxis>
+                </BarChart>
+            </Tab>
+            <Tab text="Évolution &amp; Prévision">
+                <VBox spacing="8">
+                    <padding>
+                        <Insets topRightBottomLeft="10" />
+                    </padding>
+                    <LineChart fx:id="lineEvolution">
+                        <xAxis>
+                            <CategoryAxis label="Mois"/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis label="Net période"/>
+                        </yAxis>
+                    </LineChart>
+                    <Label fx:id="forecastLabel"/>
+                </VBox>
+            </Tab>
+        </TabPane>
     </center>
 </BorderPane>

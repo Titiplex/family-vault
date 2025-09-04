@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.tsumiyoku.familyhub.ui.BudgetCategoriesController" spacing="8">
+    <padding>
+        <Insets topRightBottomLeft="12"/>
+    </padding>
+    <HBox spacing="8">
+        <Label text="Catégories" styleClass="section-title"/>
+    </HBox>
+    <HBox spacing="8">
+        <TextField fx:id="nameField" promptText="Nom de catégorie" HBox.hgrow="ALWAYS"/>
+        <Button text="Ajouter" onAction="#onAdd"/>
+        <Button text="Supprimer" onAction="#onDelete"/>
+    </HBox>
+    <TableView fx:id="table">
+        <columns>
+            <TableColumn fx:id="colName" text="Nom" prefWidth="320"/>
+        </columns>
+    </TableView>
+</VBox>

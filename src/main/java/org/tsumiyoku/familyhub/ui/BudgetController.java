@@ -1,120 +1,250 @@
 package org.tsumiyoku.familyhub.ui;
 
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseEvent;
+import org.tsumiyoku.familyhub.budget.BudgetQueries;
+import org.tsumiyoku.familyhub.budget.CurrencyService;
 import org.tsumiyoku.familyhub.db.Database;
 import org.tsumiyoku.familyhub.util.Dialogs;
+import org.tsumiyoku.familyhub.util.SafeFXML;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Objects;
+import java.sql.*;
+import java.time.LocalDate;
+import java.util.*;
 
 public class BudgetController {
-    @FXML
-    private TableView<BaseCrud.Row> table;
-    @FXML
-    private TableColumn<BaseCrud.Row, String> col1;
-    @FXML
-    private TableColumn<BaseCrud.Row, String> col2;
-    @FXML
-    private TableColumn<BaseCrud.Row, String> col3;
-    @FXML
-    private TableColumn<BaseCrud.Row, String> col4;
 
-    // Fields (defined in FXML)
+    // Filtres période
+    @FXML
+    private DatePicker filterStart, filterEnd;
 
+    // Saisie transaction
     @FXML
-    private TextField titleField, locationField, subjectField, recipientField, pathField, captionField, nameField, phoneField, emailField, durationField, tagsField, categoryField, amountField, noteField, mealField, calField, dowField, startField, endField, labelField, timestampField, latField, lngField, labelField2;
+    private DatePicker txDate;
     @FXML
-    private TextArea ingredientsArea, stepsArea, contentArea, descArea;
+    private ComboBox<String> currencyBox;
     @FXML
-    private DatePicker dateField, dueDate;
+    private TextField amountField, noteField, rateField;
     @FXML
-    private CheckBox doneCheck;
+    private ComboBox<String> categoryBox;
+    @FXML
+    private ComboBox<String> payerBox;
+    @FXML
+    private CheckBox incomeCheck;
 
+    // Participants
     @FXML
-    public void initialize() {
-        col1.setText("Date");
-        col2.setText("Catégorie");
-        col3.setText("Montant");
-        col4.setText("Note");
-        col1.setCellValueFactory(data -> data.getValue().c1);
-        col2.setCellValueFactory(data -> data.getValue().c2);
-        col3.setCellValueFactory(data -> data.getValue().c3);
-        col4.setCellValueFactory(data -> data.getValue().c4);
-        table.getSelectionModel().selectedItemProperty().addListener((obs, a, b) -> fillForm(b));
-        reload();
-    }
+    private TableView<ParticipantRow> participantsTable;
+    @FXML
+    private TableColumn<ParticipantRow, String> colPerson, colShare;
+    @FXML
+    private Button btnSplitEqual;
 
-    private void reload() {
-        try (Connection c = Database.get();
-             PreparedStatement ps = c.prepareStatement("select id, date, category, amount, note from budget where user_id = ? AND deleted = 0 order by id desc")) {
-            ps.setInt(1, Database.getCurrentUserId());
-            ResultSet rs = ps.executeQuery();
-            var list = FXCollections.<BaseCrud.Row>observableArrayList();
-            while (rs.next()) {
-                list.add(new BaseCrud.Row(
-                        rs.getInt(1),
-                        rs.getString(2),
-                        rs.getString(3),
-                        Double.toString(rs.getDouble(4)),
-                        rs.getString(5)
-                ));
-            }
-            table.setItems(list);
-        } catch (Exception e) {
-            Dialogs.error("Erreur", "Chargement", e);
+    // Tableau des transactions
+    @FXML
+    private TableView<TxRow> table;
+    @FXML
+    private TableColumn<TxRow, String> tcolDate, tcolCat, tcolPayer, tcolCur, tcolAmount, tcolDef, tcolNote;
+
+    // Devise par défaut affichée
+    @FXML
+    private Label defaultCurLabel;
+
+    private final Map<Integer, String> users = BudgetQueries.listUsers();
+    private final Map<Integer, String> categories = new LinkedHashMap<>();
+    private final Map<String, Integer> catByName = new HashMap<>();
+    private final List<String> currencies = BudgetQueries.listCurrencies();
+
+    private static class TxRow {
+        final int id;
+        final SimpleStringProperty date, cat, payer, cur, amount, amountDef, note;
+
+        TxRow(int id, String date, String cat, String payer, String cur, String amount, String amountDef, String note) {
+            this.id = id;
+            this.date = new SimpleStringProperty(date);
+            this.cat = new SimpleStringProperty(cat);
+            this.payer = new SimpleStringProperty(payer);
+            this.cur = new SimpleStringProperty(cur);
+            this.amount = new SimpleStringProperty(amount);
+            this.amountDef = new SimpleStringProperty(amountDef);
+            this.note = new SimpleStringProperty(note);
         }
     }
 
-    private void fillForm(BaseCrud.Row r) {
-        if (r == null) return;
-        // No-op; modules will read fields directly when updating. Selection doesn't auto-populate all widgets generically.
+    public static class ParticipantRow {
+        final int userId;
+        final SimpleStringProperty name;
+        double share;
+
+        ParticipantRow(int userId, String name, double share) {
+            this.userId = userId;
+            this.name = new SimpleStringProperty(name);
+            this.share = share;
+        }
+    }
+
+    @FXML
+    public void initialize() {
+        // Période par défaut = mois courant
+        filterStart.setValue(LocalDate.now().withDayOfMonth(1));
+        filterEnd.setValue(LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth()));
+
+        // Catégories & users
+        categories.clear();
+        categories.putAll(BudgetQueries.listCategories(Database.getCurrentUserId()));
+        catByName.clear();
+        categories.forEach((id, name) -> catByName.put(name, id));
+        categoryBox.setItems(FXCollections.observableArrayList(categories.values()));
+
+        payerBox.setItems(FXCollections.observableArrayList(users.values()));
+
+        currencyBox.setItems(FXCollections.observableArrayList(currencies));
+
+        // participants
+        var pr = FXCollections.<ParticipantRow>observableArrayList();
+        for (var e : users.entrySet()) pr.add(new ParticipantRow(e.getKey(), e.getValue(), 0));
+        participantsTable.setItems(pr);
+        colPerson.setCellValueFactory(d -> d.getValue().name);
+        colShare.setCellValueFactory(d -> new SimpleStringProperty(String.format(Locale.US, "%.1f%%", d.getValue().share)));
+
+        // tableau tx
+        tcolDate.setCellValueFactory(d -> d.getValue().date);
+        tcolCat.setCellValueFactory(d -> d.getValue().cat);
+        tcolPayer.setCellValueFactory(d -> d.getValue().payer);
+        tcolCur.setCellValueFactory(d -> d.getValue().cur);
+        tcolAmount.setCellValueFactory(d -> d.getValue().amount);
+        tcolDef.setCellValueFactory(d -> d.getValue().amountDef);
+        tcolNote.setCellValueFactory(d -> d.getValue().note);
+
+        // labels
+        defaultCurLabel.setText(CurrencyService.getDefaultCurrency(Database.getCurrentUserId()));
+
+        reload();
+    }
+
+    @FXML
+    public void onRefresh() {
+        reload();
+    }
+
+    @FXML
+    public void onSplitEqual() {
+        int n = (int) participantsTable.getItems().stream().filter(p -> true).count();
+        double each = n == 0 ? 0.0 : Math.round((100.0 / n) * 10.0) / 10.0;
+        for (var p : participantsTable.getItems()) p.share = each;
+        participantsTable.refresh();
     }
 
     @FXML
     public void onClear() {
-        // Clear a subset of known fields
-        if (titleField != null) titleField.clear();
-        if (locationField != null) locationField.clear();
-        if (subjectField != null) subjectField.clear();
-        if (recipientField != null) recipientField.clear();
-        if (pathField != null) pathField.clear();
-        if (captionField != null) captionField.clear();
-        if (nameField != null) nameField.clear();
-        if (phoneField != null) phoneField.clear();
-        if (emailField != null) emailField.clear();
-        if (durationField != null) durationField.clear();
-        if (tagsField != null) tagsField.clear();
-        if (categoryField != null) categoryField.clear();
-        if (amountField != null) amountField.clear();
-        if (noteField != null) noteField.clear();
-        if (mealField != null) mealField.clear();
-        if (calField != null) calField.clear();
-        if (dowField != null) dowField.clear();
-        if (startField != null) startField.clear();
-        if (endField != null) endField.clear();
-        if (latField != null) latField.clear();
-        if (lngField != null) lngField.clear();
-        if (ingredientsArea != null) ingredientsArea.clear();
-        if (stepsArea != null) stepsArea.clear();
-        if (contentArea != null) contentArea.clear();
-        if (descArea != null) descArea.clear();
-        if (dateField != null) dateField.setValue(null);
-        if (dueDate != null) dueDate.setValue(null);
-        if (doneCheck != null) doneCheck.setSelected(false);
+        txDate.setValue(LocalDate.now());
+        categoryBox.getSelectionModel().clearSelection();
+        payerBox.getSelectionModel().clearSelection();
+        currencyBox.getSelectionModel().select(CurrencyService.getDefaultCurrency(Database.getCurrentUserId()));
+        amountField.clear();
+        rateField.clear();
+        noteField.clear();
+        incomeCheck.setSelected(false);
+        for (var p : participantsTable.getItems()) p.share = 0;
+        participantsTable.refresh();
+    }
+
+    @FXML
+    public void onSetDefaultCurrency() {
+        var choice = new ChoiceDialog<>(CurrencyService.getDefaultCurrency(Database.getCurrentUserId()),
+                BudgetQueries.listCurrencies());
+        choice.setTitle("Devise par défaut");
+        choice.setHeaderText("Choisir la devise par défaut pour les calculs");
+        var res = choice.showAndWait();
+        res.ifPresent(code -> {
+            CurrencyService.setDefaultCurrency(Database.getCurrentUserId(), code);
+            defaultCurLabel.setText(code);
+            reload();
+        });
+    }
+
+    @FXML
+    public void onManageCategories() {
+        open("budget_categories.fxml", "Catégories");
+        // après fermeture, recharger
+        categories.clear();
+        categories.putAll(BudgetQueries.listCategories(Database.getCurrentUserId()));
+        categoryBox.setItems(FXCollections.observableArrayList(categories.values()));
+    }
+
+    @FXML
+    public void onManageRates() {
+        open("budget_rates.fxml", "Taux de change");
+    }
+
+    @FXML
+    public void onOpenStats() {
+        open("budget_stats.fxml", "Budget – Analyses & Prévisions");
+    }
+
+    private void open(String fxml, String title) {
+        try {
+            var root = SafeFXML.load(fxml);
+            var s = new javafx.stage.Stage();
+            s.setTitle(title);
+            var sc = new javafx.scene.Scene((Parent) root, 980, 640);
+            var css = getClass().getResource("/app.css");
+            if (css != null) sc.getStylesheets().add(css.toExternalForm());
+            s.setScene(sc);
+            s.showAndWait();
+        } catch (Exception e) {
+            Dialogs.error("Ouverture", "Impossible d'ouvrir " + fxml, e);
+        }
     }
 
     @FXML
     public void onAdd() {
-        try (Connection c = Database.get();
-             PreparedStatement ps = c.prepareStatement("insert into budget(user_id, date, category, amount, note) values(?, ?,?,?,?)")) {
-            ps.setInt(1, Database.getCurrentUserId());
-            extract(ps);
-            ps.executeUpdate();
+        try (Connection c = Database.get()) {
+            int uid = Database.getCurrentUserId();
+            String cur = currencyBox.getValue();
+            String def = CurrencyService.getDefaultCurrency(uid);
+            String date = BudgetQueries.iso(txDate.getValue());
+            double amount = parseAmount(amountField.getText());
+            double rate = computeRate(cur, def, date);
+            if (rate <= 0) {
+                Dialogs.error("Devise", "Aucun taux trouvé (ajoute-le dans 'Taux de change').", null);
+                return;
+            }
+
+            Integer catId = categoryBox.getValue() == null ? null : catByName.get(categoryBox.getValue());
+            Integer payerUserId = resolveUserId(payerBox.getValue());
+            if (payerUserId == null) {
+                Dialogs.error("Validation", "Choisis un payeur", null);
+                return;
+            }
+
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO budget_tx(user_id,tx_date,category_id,payer_user_id,currency,amount,rate_to_default,amount_default,note,is_income,uuid) " +
+                            "VALUES(?,?,?,?,?,?,?,?,?,?,lower(hex(randomblob(16))))",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, uid);
+                ps.setString(2, date);
+                if (catId == null) ps.setNull(3, Types.INTEGER);
+                else ps.setInt(3, catId);
+                ps.setInt(4, payerUserId);
+                ps.setString(5, cur);
+                ps.setDouble(6, amount);
+                ps.setDouble(7, rate);
+                ps.setDouble(8, amount * rate);
+                ps.setString(9, noteField.getText());
+                ps.setInt(10, incomeCheck.isSelected() ? 1 : 0);
+                ps.executeUpdate();
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) {
+                        int txId = keys.getInt(1);
+                        saveParticipants(c, txId);
+                    }
+                }
+            }
             reload();
             onClear();
         } catch (Exception e) {
@@ -124,59 +254,171 @@ public class BudgetController {
 
     @FXML
     public void onUpdate() {
-        BaseCrud.Row sel = table.getSelectionModel().getSelectedItem();
+        TxRow sel = table.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            Dialogs.error("Validation", "Sélectionnez une ligne à mettre à jour", null);
+            Dialogs.error("Validation", "Sélectionne une transaction", null);
             return;
         }
-        try (Connection c = Database.get();
-             PreparedStatement ps = c.prepareStatement("update budget set date=?,category=?,amount=?,note=? where id = ? and user_id = ?")) {
-            extract(ps);
-            ps.setInt(5, sel.getId());
-            ps.setInt(6, Database.getCurrentUserId());
-            ps.executeUpdate();
+        try (Connection c = Database.get()) {
+            int uid = Database.getCurrentUserId();
+            String cur = currencyBox.getValue();
+            String def = CurrencyService.getDefaultCurrency(uid);
+            String date = BudgetQueries.iso(txDate.getValue());
+            double amount = parseAmount(amountField.getText());
+            double rate = computeRate(cur, def, date);
+            Integer catId = categoryBox.getValue() == null ? null : catByName.get(categoryBox.getValue());
+            Integer payerUserId = resolveUserId(payerBox.getValue());
+            try (PreparedStatement ps = c.prepareStatement(
+                    "UPDATE budget_tx SET tx_date=?,category_id=?,payer_user_id=?,currency=?,amount=?,rate_to_default=?,amount_default=?,note=?,is_income=? " +
+                            "WHERE id=? AND user_id=?")) {
+                ps.setString(1, date);
+                if (catId == null) ps.setNull(2, Types.INTEGER);
+                else ps.setInt(2, catId);
+                ps.setInt(3, payerUserId);
+                ps.setString(4, cur);
+                ps.setDouble(5, amount);
+                ps.setDouble(6, rate);
+                ps.setDouble(7, amount * rate);
+                ps.setString(8, noteField.getText());
+                ps.setInt(9, incomeCheck.isSelected() ? 1 : 0);
+                ps.setInt(10, sel.id);
+                ps.setInt(11, uid);
+                ps.executeUpdate();
+            }
+            // Recrée les participants
+            try (PreparedStatement del = c.prepareStatement("UPDATE budget_tx_participants SET deleted=1 WHERE tx_id=?")) {
+                del.setInt(1, sel.id);
+                del.executeUpdate();
+            }
+            saveParticipants(c, sel.id);
             reload();
         } catch (Exception e) {
             Dialogs.error("Erreur", "Mise à jour", e);
         }
     }
 
-    private void extract(PreparedStatement ps) throws SQLException {
-        ps.setString(2, dateField.getValue() == null ? null : dateField.getValue().toString());
-        ps.setString(3, categoryField.getText());
-        ps.setDouble(4, Double.parseDouble(amountField.getText().isBlank() ? "0" : amountField.getText()));
-        ps.setString(5, noteField.getText());
-    }
-
     @FXML
     public void onDelete() {
-        BaseCrud.Row sel = table.getSelectionModel().getSelectedItem();
+        TxRow sel = table.getSelectionModel().getSelectedItem();
         if (sel == null) {
-            Dialogs.error("Validation", "Sélectionnez une ligne à supprimer", null);
+            Dialogs.error("Validation", "Sélectionne une transaction", null);
             return;
         }
-        if (!Dialogs.confirm("Confirmation", "Supprimer l'élément sélectionné ?")) return;
+        if (!Dialogs.confirm("Confirmation", "Supprimer (soft-delete) cette transaction ?")) return;
         try (Connection c = Database.get();
-             PreparedStatement ps = c.prepareStatement("UPDATE budget SET deleted=1 WHERE id = ? AND user_id = ?")) {
-            ps.setInt(1, sel.getId());
+             PreparedStatement ps = c.prepareStatement("UPDATE budget_tx SET deleted=1 WHERE id=? AND user_id=?")) {
+            ps.setInt(1, sel.id);
             ps.setInt(2, Database.getCurrentUserId());
             ps.executeUpdate();
+            try (PreparedStatement ps2 = c.prepareStatement("UPDATE budget_tx_participants SET deleted=1 WHERE tx_id=?")) {
+                ps2.setInt(1, sel.id);
+                ps2.executeUpdate();
+            }
             reload();
         } catch (Exception e) {
             Dialogs.error("Erreur", "Suppression", e);
         }
     }
 
-    public void onOpenStats() {
-        try {
-            javafx.scene.Parent root = javafx.fxml.FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/budget_stats.fxml")));
-            javafx.stage.Stage s = new javafx.stage.Stage();
-            s.setTitle("Budget – Statistiques");
-            s.setScene(new javafx.scene.Scene(root, 900, 560));
-            s.getScene().getStylesheets().add(Objects.requireNonNull(getClass().getResource("/app.css")).toExternalForm());
-            s.show();
-        } catch (Exception e) {
-            org.tsumiyoku.familyhub.util.Dialogs.error("Erreur", "Ouverture des statistiques", e);
+    private void saveParticipants(Connection c, int txId) throws SQLException {
+        double total = 0;
+        for (var p : participantsTable.getItems()) total += p.share;
+        if (Math.abs(total - 100.0) > 0.01)
+            throw new SQLException("La somme des parts doit faire 100% (actuellement " + total + "%).");
+        try (PreparedStatement ps = c.prepareStatement(
+                "INSERT INTO budget_tx_participants(tx_id,participant_user_id,share_percent,uuid) VALUES(?,?,?,lower(hex(randomblob(16))))")) {
+            for (var p : participantsTable.getItems()) {
+                ps.setInt(1, txId);
+                ps.setInt(2, p.userId);
+                ps.setDouble(3, p.share);
+                ps.addBatch();
+            }
+            ps.executeBatch();
         }
+    }
+
+    private Integer resolveUserId(String name) {
+        for (var e : users.entrySet()) if (Objects.equals(e.getValue(), name)) return e.getKey();
+        return null;
+    }
+
+    private double parseAmount(String s) {
+        if (s == null || s.isBlank()) return 0;
+        return Double.parseDouble(s.replace(',', '.'));
+    }
+
+    private double computeRate(String from, String to, String at) {
+        if (rateField.getText() != null && !rateField.getText().isBlank())
+            return Double.parseDouble(rateField.getText().replace(',', '.'));
+        Double r = CurrencyService.findRate(from, to, at);
+        if (r != null) rateField.setText(String.format(Locale.US, "%.6f", r));
+        return r == null ? 0.0 : r;
+    }
+
+    private void reload() {
+        String s = BudgetQueries.iso(filterStart.getValue());
+        String e = BudgetQueries.iso(filterEnd.getValue());
+        if (s == null || e == null) {
+            var today = LocalDate.now();
+            s = today.withDayOfMonth(1).toString();
+            e = today.toString();
+        }
+        var txs = BudgetQueries.listTx(Database.getCurrentUserId(), s, e);
+        var rows = FXCollections.<TxRow>observableArrayList();
+        for (var t : txs)
+            rows.add(new TxRow(
+                    t.id(), t.date(), t.category(), users.getOrDefault(t.payerUserId(), "?"),
+                    t.currency(), String.format(Locale.US, "%.2f", t.amount()),
+                    String.format(Locale.US, "%.2f", t.amountDefault()), t.note()
+            ));
+        table.setItems(rows);
+        // (Optionnel) Alerte console si limites dépassées dans la période filtrée
+        int uid = Database.getCurrentUserId();
+        var limits = BudgetQueries.listLimits(uid);
+        int exceeded = 0;
+        for (var l : limits) {
+            double used = BudgetQueries.spentFor(uid, s, e, l.categoryId());
+            if ("spend".equalsIgnoreCase(l.goalType()) && used > l.limit()) exceeded++;
+            if ("save".equalsIgnoreCase(l.goalType()) && (-used) < l.limit()) {/* non atteint */}
+        }
+        if (exceeded > 0) System.out.println("[Budget] Limites dépassées: " + exceeded);
+
+    }
+
+    // pour édition rapide en cliquant une transaction
+    @FXML
+    public void onSelectTx(MouseEvent e) {
+        var sel = table.getSelectionModel().getSelectedItem();
+        if (sel == null) return;
+        txDate.setValue(LocalDate.parse(sel.date.get()));
+        categoryBox.getSelectionModel().select(sel.cat.get());
+        payerBox.getSelectionModel().select(sel.payer.get());
+        currencyBox.getSelectionModel().select(sel.cur.get());
+        amountField.setText(sel.amount.get());
+        rateField.setText(""); // facultatif; on laisse recomputé
+        noteField.setText(sel.note.get());
+        incomeCheck.setSelected(false); // pas dans le tableau, garde comme dépense par défaut
+        // Charger les participants actuels
+        try (Connection c = Database.get();
+             PreparedStatement ps = c.prepareStatement("SELECT participant_user_id, share_percent FROM budget_tx_participants WHERE tx_id=? AND deleted=0")) {
+            ps.setInt(1, sel.id);
+            Map<Integer, Double> cur = new HashMap<>();
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) cur.put(rs.getInt(1), rs.getDouble(2));
+            }
+            for (var row : participantsTable.getItems()) row.share = cur.getOrDefault(row.userId, 0.0);
+            participantsTable.refresh();
+        } catch (Exception ignored) {
+        }
+    }
+
+    @FXML
+    public void onManageLimits() {
+        open("budget_limits.fxml", "Limites & objectifs");
+    }
+
+    @FXML
+    public void onManageShares() {
+        open("budget_shares.fxml", "Parts cibles du foyer");
     }
 }

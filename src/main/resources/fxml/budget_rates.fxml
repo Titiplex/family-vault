@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.tsumiyoku.familyhub.ui.BudgetRatesController" spacing="10">
+    <padding>
+        <Insets topRightBottomLeft="12"/>
+    </padding>
+    <Label text="Taux de change (historiques)" styleClass="section-title"/>
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <ComboBox fx:id="baseBox" promptText="Base"/>
+        <Label text="→"/>
+        <ComboBox fx:id="quoteBox" promptText="Quote"/>
+        <DatePicker fx:id="dateField"/>
+        <TextField fx:id="rateField" promptText="Taux (1 base = x quote)"/>
+        <Button text="Ajouter" onAction="#onAdd"/>
+    </HBox>
+    <TableView fx:id="table">
+        <columns>
+            <TableColumn fx:id="colPair" text="Paire" prefWidth="120"/>
+            <TableColumn fx:id="colDate" text="Date" prefWidth="160"/>
+            <TableColumn fx:id="colRate" text="Taux" prefWidth="140"/>
+        </columns>
+    </TableView>
+</VBox>

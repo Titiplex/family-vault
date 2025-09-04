@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.tsumiyoku.familyhub.ui.BudgetLimitsController" spacing="10">
+    <padding>
+        <Insets topRightBottomLeft="12"/>
+    </padding>
+    <Label text="Limites &amp; objectifs (devise par défaut)" styleClass="section-title"/>
+    <HBox spacing="8" alignment="CENTER_LEFT">
+        <ComboBox fx:id="categoryBox" promptText="Catégorie"/>
+        <Label text="Période:"/>
+        <DatePicker fx:id="startField"/>
+        <Label text="→"/>
+        <DatePicker fx:id="endField"/>
+        <ComboBox fx:id="goalTypeBox" promptText="Type"/>
+        <TextField fx:id="amountField" promptText="Montant limite / objectif"/>
+        <Button text="Ajouter" onAction="#onAdd"/>
+        <Button text="Rafraîchir" onAction="#onRefresh"/>
+        <Button text="Supprimer" onAction="#onDelete"/>
+    </HBox>
+    <TableView fx:id="table">
+        <columns>
+            <TableColumn fx:id="colPeriod" text="Période" prefWidth="220"/>
+            <TableColumn fx:id="colCat" text="Catégorie" prefWidth="160"/>
+            <TableColumn fx:id="colLimit" text="Limite/objectif" prefWidth="140"/>
+            <TableColumn fx:id="colUsed" text="Net période" prefWidth="120"/>
+            <TableColumn fx:id="colStatus" text="Statut" prefWidth="220"/>
+        </columns>
+    </TableView>
+</VBox>
