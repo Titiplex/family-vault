@@ -95,4 +95,48 @@ public final class Crypto {
             throw new RuntimeException(e);
         }
     }
+
+    // --- Ed25519 (signature) ---
+    public record SigPair(String publicB64, String privateB64) {
+    }
+
+    public static SigPair generateEd25519() {
+        try {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("Ed25519");
+            KeyPair kp = kpg.generateKeyPair();
+            return new SigPair(
+                    Base64.getEncoder().encodeToString(kp.getPublic().getEncoded()),
+                    Base64.getEncoder().encodeToString(kp.getPrivate().getEncoded())
+            );
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static String signEd25519(byte[] data, String privateKeyB64) {
+        try {
+            var priv = KeyFactory.getInstance("Ed25519")
+                    .generatePrivate(new java.security.spec.PKCS8EncodedKeySpec(Base64.getDecoder().decode(privateKeyB64)));
+            var sig = java.security.Signature.getInstance("Ed25519");
+            sig.initSign(priv);
+            sig.update(data);
+            return Base64.getEncoder().encodeToString(sig.sign());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static boolean verifyEd25519(byte[] data, String signatureB64, String publicKeyB64) {
+        try {
+            var pub = KeyFactory.getInstance("Ed25519")
+                    .generatePublic(new java.security.spec.X509EncodedKeySpec(Base64.getDecoder().decode(publicKeyB64)));
+            var sig = java.security.Signature.getInstance("Ed25519");
+            sig.initVerify(pub);
+            sig.update(data);
+            return sig.verify(Base64.getDecoder().decode(signatureB64));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }

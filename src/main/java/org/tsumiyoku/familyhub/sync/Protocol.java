@@ -29,8 +29,16 @@ public final class Protocol {
     }
 
     // Non chiffré (échange public keys + id)
-    public record Hello(String type, String deviceId, String publicKey) {
+    public record Hello(String type, String deviceId, String publicKey,
+                        String signPublicKey, String signature) {
     }
+
+    public static byte[] helloToBeSigned(String deviceId, String x25519Pub, String ed25519Pub) {
+        // fixe et déterministe
+        String s = "HELLO|" + deviceId + "|" + x25519Pub + "|" + ed25519Pub;
+        return s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
 
     // Chiffré
     public record SyncRequest(String type, String since) {

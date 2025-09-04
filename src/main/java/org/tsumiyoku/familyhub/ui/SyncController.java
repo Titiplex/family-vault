@@ -63,6 +63,7 @@ public class SyncController {
             String addr = InetAddress.getLocalHost().getHostAddress();
             String invite = M.writerWithDefaultPrettyPrinter().writeValueAsString(Map.of(
                     "deviceId", me.deviceId, "publicKey", me.publicKey,
+                    "signPublicKey", me.signPublicKey,
                     "address", addr, "port", Integer.parseInt(portField.getText())
             ));
             myInvite.setText(invite);
@@ -135,7 +136,8 @@ public class SyncController {
                     (String) m.get("publicKey"),
                     (String) m.get("address"),
                     (Integer) m.get("port"),
-                    pinHash
+                    pinHash,
+                    (String) m.get("signPublicKey")
             ));
             reloadPeers();
             append("Pair ajouté.");

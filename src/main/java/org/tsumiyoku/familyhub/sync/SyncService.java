@@ -3,6 +3,7 @@ package org.tsumiyoku.familyhub.sync;
 import org.tsumiyoku.familyhub.db.Database;
 import org.tsumiyoku.familyhub.util.Crypto;
 import org.tsumiyoku.familyhub.util.Dialogs;
+import org.tsumiyoku.familyhub.util.Upnp;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -13,10 +14,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -35,15 +33,28 @@ public final class SyncService {
         listenPort = p;
     }
 
+    public static void syncAllKnownPeers() {
+        try {
+            for (PeerStore.Peer p : PeerStore.list()) {
+                connectToPeer(p.address(), p.port());
+            }
+        } catch (Exception e) {
+            Dialogs.error("Sync", "syncAllKnownPeers", e);
+        }
+    }
+
+    // 3) au démarrage serveur, tenter un mapping UPnP (best-effort)
     public static void startServer() {
         if (running) return;
         running = true;
+        // Tentative UPnP (non bloquant) pour l'Internet sans serveur tiers
+        Upnp.tryMapTcpPort(listenPort, "FamilyHub P2P");
         EXEC.submit(() -> {
             try (ServerSocket ss = new ServerSocket(listenPort)) {
                 server = ss;
                 while (running) {
                     Socket s = ss.accept();
-                    EXEC.submit(() -> handleConnection(s));
+                    EXEC.submit(() -> handleConnection(s, /*isServer*/true));
                 }
             } catch (Exception e) {
                 running = false;
@@ -63,39 +74,49 @@ public final class SyncService {
     public static void connectToPeer(String host, int port) {
         EXEC.submit(() -> {
             try (Socket s = new Socket(host, port)) {
-                handleConnection(s);
+                handleConnection(s, true);
             } catch (Exception e) {
                 Dialogs.error("Sync", "Connexion pair " + host + ":" + port, e);
             }
         });
     }
 
-    private static void handleConnection(Socket s) {
+    private static void handleConnection(Socket s, boolean b) {
         try (Socket autoClose = s;
              InputStream in = s.getInputStream();
              OutputStream out = s.getOutputStream()) {
 
             DeviceIdentity me = DeviceIdentity.get();
 
-            // 1) Hello clair
-            Protocol.sendFrame(out, Protocol.toJson(new Protocol.Hello("hello", me.deviceId, me.publicKey)));
+// 1) Hello clair signé
+            byte[] toSign = Protocol.helloToBeSigned(me.deviceId, me.publicKey, me.signPublicKey);
+            String sig = Crypto.signEd25519(toSign, me.signPrivateKey);
+            Protocol.sendFrame(out, Protocol.toJson(new Protocol.Hello("hello", me.deviceId, me.publicKey, me.signPublicKey, sig)));
+
             Protocol.Hello peerHello = Protocol.fromJson(Protocol.recvFrame(in), Protocol.Hello.class);
 
-            // 2) Verif pair connu + récupération secret appairage hashé
-            String peerId = peerHello.deviceId();
-            String peerPub = peerHello.publicKey();
-            String pairingSecretHash = null;
+// 2) Vérif pair + vérif signature Ed25519
+            PeerStore.Peer known = null;
+            String peerId = "";
             for (PeerStore.Peer p : PeerStore.list()) {
-                if (p.deviceId().equals(peerId) && p.publicKey().equals(peerPub)) {
-                    pairingSecretHash = p.pairingSecretHash();
+                if (p.deviceId().equals(peerHello.deviceId()) && p.publicKey().equals(peerHello.publicKey())) {
+                    known = p;
+                    peerId = p.deviceId();
                     break;
                 }
             }
-            if (pairingSecretHash == null) throw new RuntimeException("Pair inconnu: " + peerId);
+            if (known == null) throw new RuntimeException("Pair inconnu: " + peerHello.deviceId());
 
-            // 3) Clé de session = X25519 + HKDF(info = deviceIds triés + secret d’appairage)
-            String info = (me.deviceId.compareTo(peerId) < 0 ? me.deviceId + "|" + peerId : peerId + "|" + me.deviceId) + "|" + pairingSecretHash;
-            byte[] sessionKey = Crypto.deriveSharedKey(me.privateKey, peerPub, info);
+            byte[] peerToSign = Protocol.helloToBeSigned(peerHello.deviceId(), peerHello.publicKey(), peerHello.signPublicKey());
+            boolean okSig = Crypto.verifyEd25519(
+                    peerToSign, peerHello.signature(), known.signPublicKey());
+            if (!okSig) throw new RuntimeException("Signature HELLO invalide pour " + peerHello.deviceId());
+
+            // 3) ECDH + HKDF (comme avant)
+            String info = (me.deviceId.compareTo(peerHello.deviceId()) < 0 ?
+                    me.deviceId + "|" + peerHello.deviceId() : peerHello.deviceId() + "|" + me.deviceId) + "|" + known.pairingSecretHash();
+            byte[] sessionKey = Crypto.deriveSharedKey(me.privateKey, peerHello.publicKey(), info);
+
 
             // 4) Echange des curseurs (chiffré)
             String sinceLocal = PeerStore.lastSyncAt(peerId);
@@ -128,11 +149,11 @@ public final class SyncService {
                 try (PreparedStatement ps = c.prepareStatement(sql)) {
                     ps.setString(1, since);
                     ResultSet rs = ps.executeQuery();
-                    var rows = new java.util.ArrayList<java.util.Map<String, Object>>();
+                    var rows = new ArrayList<Map<String, Object>>();
                     var md = rs.getMetaData();
                     int n = md.getColumnCount();
                     while (rs.next()) {
-                        var m = new java.util.LinkedHashMap<String, Object>();
+                        var m = new LinkedHashMap<String, Object>();
                         for (int i = 1; i <= n; i++) {
                             String col = md.getColumnLabel(i);
                             if ("password_hash".equalsIgnoreCase(col)) continue;
@@ -140,11 +161,11 @@ public final class SyncService {
                         }
                         rows.add(m);
                     }
-                    Protocol.TableRows payload = new Protocol.TableRows("rows", t, rows, java.time.Instant.now().toString());
+                    Protocol.TableRows payload = new Protocol.TableRows("rows", t, rows, Instant.now().toString());
                     Protocol.sendFrame(out, Crypto.encrypt(key, Protocol.toJson(payload), null));
                 }
             }
-            Protocol.sendFrame(out, Crypto.encrypt(key, Protocol.toJson(new Protocol.Done("done", java.time.Instant.now().toString())), null));
+            Protocol.sendFrame(out, Crypto.encrypt(key, Protocol.toJson(new Protocol.Done("done", Instant.now().toString())), null));
         }
     }
 
@@ -226,7 +247,7 @@ public final class SyncService {
         List<String> cols = new ArrayList<>(m.keySet());
         // Construction SQL
         String colList = String.join(",", cols);
-        String placeholders = String.join(",", java.util.Collections.nCopies(cols.size(), "?"));
+        String placeholders = String.join(",", Collections.nCopies(cols.size(), "?"));
 
         StringBuilder up = new StringBuilder();
         up.append("INSERT INTO ").append(table).append("(").append(colList).append(") VALUES(").append(placeholders).append(") ");

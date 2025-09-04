@@ -7,6 +7,8 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.tsumiyoku.familyhub.db.Database;
 import org.tsumiyoku.familyhub.sync.DeviceIdentity;
+import org.tsumiyoku.familyhub.sync.SyncAuto;
+import org.tsumiyoku.familyhub.sync.SyncService;
 
 import java.util.Objects;
 
@@ -16,6 +18,9 @@ public class Main extends Application {
     public void start(Stage stage) throws Exception {
         Database.init(); // make sure DB + migrations are ready
         DeviceIdentity.get(); // génère/charge l'identité de l'appareil
+        SyncService.startServer();
+        SyncAuto.start();
+
         Parent root = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/fxml/login.fxml")));
         Scene scene = new Scene(root, 1000, 640);
         scene.getStylesheets().add(Objects.requireNonNull(getClass().getResource("/app.css")).toExternalForm());

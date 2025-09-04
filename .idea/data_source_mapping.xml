@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/src/main/java/org/tsumiyoku/familyhub/ui/BudgetController.java" value="40f3e6fb-29d1-4aaa-a4fb-864f1581ef8d" />
     <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V3__sync_schema_add_columns.sql" value="40f3e6fb-29d1-4aaa-a4fb-864f1581ef8d" />
     <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V4__sync_data_indexes_triggers.sql" value="40f3e6fb-29d1-4aaa-a4fb-864f1581ef8d" />
+    <file url="file://$PROJECT_DIR$/src/main/resources/db/migration/V5__oplog_and_triggers.sql" value="40f3e6fb-29d1-4aaa-a4fb-864f1581ef8d" />
   </component>
 </project>

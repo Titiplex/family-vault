@@ -8,6 +8,7 @@ module family.hub {
     requires com.fasterxml.jackson.databind;
     requires bcrypt;
     requires java.desktop;
+    requires weupnp;
 
     exports org.tsumiyoku.familyhub.ui;
     exports org.tsumiyoku.familyhub.db;
@@ -17,5 +18,6 @@ module family.hub {
     opens org.tsumiyoku.familyhub.ui to javafx.fxml;
     opens org.tsumiyoku.familyhub to javafx.fxml;
     opens org.tsumiyoku.familyhub.db to flyway.core;
-    opens org.tsumiyoku.familyhub.util to javafx.fxml;
+    opens org.tsumiyoku.familyhub.util to javafx.fxml, weupnp;
+    opens org.tsumiyoku.familyhub.sync to com.fasterxml.jackson.databind;
 }
