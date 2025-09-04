@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.tsumiyoku.familyhub.ui.BudgetController"
+            styleClass="root-bg">
+    <top>
+        <HBox spacing="12">
+            <padding><Insets topRightBottomLeft="12"/></padding>
+            <Label text="Budget" styleClass="section-title"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="Stats" onAction="#onOpenStats"/>
+            <Button text="Nouveau" onAction="#onClear"/>
+            <Button text="Ajouter" onAction="#onAdd"/>
+            <Button text="Mettre à jour" onAction="#onUpdate"/>
+            <Button text="Supprimer" onAction="#onDelete"/>
+        </HBox>
+    </top>
+    <center>
+        <SplitPane>
+            <VBox spacing="8">
+                <padding><Insets topRightBottomLeft="16"/></padding>
+                <DatePicker fx:id="dateField" promptText="Date"/>
+                <TextField fx:id="categoryField" promptText="Catégorie"/>
+                <TextField fx:id="amountField" promptText="Montant (nombre)"/>
+                <TextField fx:id="noteField" promptText="Note"/>
+            </VBox>
+            <TableView fx:id="table">
+                <columns>
+                    <TableColumn fx:id="col1" text="Col1"/>
+                    <TableColumn fx:id="col2" text="Col2"/>
+                    <TableColumn fx:id="col3" text="Col3"/>
+                    <TableColumn fx:id="col4" text="Col4"/>
+                </columns>
+            </TableView>
+        </SplitPane>
+    </center>
+</BorderPane>

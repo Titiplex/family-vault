@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.tsumiyoku.familyhub.ui.SyncController"
+            styleClass="root-bg">
+    <top>
+        <HBox spacing="12">
+            <padding>
+                <Insets topRightBottomLeft="12"/>
+            </padding>
+            <Label text="Synchronisation P2P" styleClass="section-title"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Label text="Port:"/>
+            <TextField fx:id="portField" prefWidth="90"/>
+            <Button text="Démarrer serveur" onAction="#onStart"/>
+            <Button text="Arrêter" onAction="#onStop"/>
+        </HBox>
+    </top>
+    <center>
+        <SplitPane>
+            <VBox spacing="8">
+                <padding>
+                    <Insets topRightBottomLeft="12"/>
+                </padding>
+                <Label text="Mon appareil"/>
+                <TextArea fx:id="myInvite" prefRowCount="8" wrapText="true"/>
+                <HBox spacing="8">
+                    <TextField fx:id="pairingSecret" promptText="Secret d'appairage (PIN)"/>
+                    <Button text="Générer invitation" onAction="#onGenerateInvite"/>
+                </HBox>
+                <Separator/>
+                <Label text="Ajouter un pair (colle l'invitation)"/>
+                <TextArea fx:id="peerInvite" prefRowCount="8" wrapText="true"/>
+                <HBox spacing="8">
+                    <TextField fx:id="peerSecret" promptText="Secret reçu (PIN)"/>
+                    <Button text="Ajouter le pair" onAction="#onAddPeer"/>
+                </HBox>
+            </VBox>
+            <VBox spacing="8">
+                <padding>
+                    <Insets topRightBottomLeft="12"/>
+                </padding>
+                <Label text="Pairs de confiance"/>
+                <TableView fx:id="peerTable">
+                    <columns>
+                        <TableColumn text="DeviceId" fx:id="colId"/>
+                        <TableColumn text="Adresse" fx:id="colAddr"/>
+                        <TableColumn text="Port" fx:id="colPort"/>
+                    </columns>
+                </TableView>
+                <HBox spacing="8">
+                    <Button text="Synchroniser maintenant" onAction="#onSyncNow"/>
+                </HBox>
+                <TextArea fx:id="log" wrapText="true"/>
+            </VBox>
+        </SplitPane>
+    </center>
+</BorderPane>

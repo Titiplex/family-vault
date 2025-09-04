@@ -1,0 +1,69 @@
+.root-bg {
+    -fx-background-color: #f8f9fb;
+}
+
+.app-title {
+    -fx-font-size: 36px;
+    -fx-font-weight: 700;
+}
+
+.section-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: 600;
+}
+
+.muted {
+    -fx-text-fill: #6b7280;
+}
+
+.tile {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.08), 12, 0, 0, 4);
+    -fx-padding: 24;
+    -fx-cursor: hand;
+}
+
+.tile:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.18), 18, 0, 0, 6);
+}
+
+.premium {
+    -fx-border-color: #a78bfa;
+    -fx-border-radius: 16;
+    -fx-border-width: 2;
+}
+
+.tile-emoji {
+    -fx-font-size: 42px;
+}
+
+.button {
+    -fx-background-radius: 12;
+}
+
+.text-field, .text-area, .date-picker {
+    -fx-background-radius: 10;
+}
+
+.table-view {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-color: #e5e7eb;
+    -fx-border-radius: 12;
+}
+
+.tile-premium {
+    -fx-background-color: white;
+    -fx-background-radius: 16;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.08), 12, 0, 0, 4);
+    -fx-padding: 24;
+    -fx-cursor: hand;
+    -fx-border-color: #a78bfa;
+    -fx-border-radius: 16;
+    -fx-border-width: 2;
+}
+
+.tile-premium:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.18), 18, 0, 0, 6);
+}

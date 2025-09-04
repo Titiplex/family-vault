@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.tsumiyoku.familyhub.ui.MapController"
+            styleClass="root-bg">
+    <top>
+        <HBox spacing="12">
+            <padding>
+                <Insets topRightBottomLeft="12"/>
+            </padding>
+            <Label text="Map" styleClass="section-title"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="Nouveau" onAction="#onClear"/>
+            <Button text="Ajouter" onAction="#onAdd"/>
+            <Button text="Mettre à jour" onAction="#onUpdate"/>
+            <Button text="Supprimer" onAction="#onDelete"/>
+        </HBox>
+    </top>
+    <center>
+        <SplitPane>
+            <VBox spacing="8">
+                <padding>
+                    <Insets topRightBottomLeft="12"/>
+                </padding>
+                <TextField fx:id="nameField" promptText="Nom"/>
+                <TextField fx:id="latField" promptText="Latitude (nombre)"/>
+                <TextField fx:id="lngField" promptText="Longitude (nombre)"/>
+                <TextField fx:id="noteField" promptText="Note"/>
+                <Button text="Ouvrir sur la carte" onAction="#onOpenMap"/>
+            </VBox>
+            <TableView fx:id="table">
+                <columns>
+                    <TableColumn fx:id="col1" text="Col1"/>
+                    <TableColumn fx:id="col2" text="Col2"/>
+                    <TableColumn fx:id="col3" text="Col3"/>
+                    <TableColumn fx:id="col4" text="Col4"/>
+                </columns>
+            </TableView>
+        </SplitPane>
+    </center>
+</BorderPane>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.tsumiyoku.familyhub.ui.ExportController" spacing="12">
+
+    <!-- Définition d’objets non-Node -->
+    <fx:define>
+        <ToggleGroup fx:id="fmt"/>
+    </fx:define>
+
+    <padding>
+        <Insets topRightBottomLeft="16"/>
+    </padding>
+
+    <Label text="Export / Import" styleClass="section-title"/>
+
+    <HBox spacing="12">
+        <Label text="Format :"/>
+        <RadioButton text="JSON" toggleGroup="$fmt" fx:id="jsonBtn" selected="true"/>
+        <RadioButton text="CSV" toggleGroup="$fmt" fx:id="csvBtn"/>
+    </HBox>
+
+    <HBox spacing="12">
+        <Button text="Exporter…" onAction="#onExport"/>
+        <Button text="Importer…" onAction="#onImport"/>
+    </HBox>
+
+    <Label text="Journal :"/>
+    <TextArea fx:id="log" wrapText="true" prefRowCount="12"/>
+
+</VBox>
