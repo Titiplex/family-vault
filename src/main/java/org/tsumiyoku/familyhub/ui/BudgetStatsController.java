@@ -14,7 +14,8 @@ import org.tsumiyoku.familyhub.budget.CurrencyService;
 import org.tsumiyoku.familyhub.db.Database;
 
 import java.time.LocalDate;
-import java.util.Locale;
+import java.util.ArrayList;
+import java.util.Map;
 
 public class BudgetStatsController {
     @FXML
@@ -28,6 +29,8 @@ public class BudgetStatsController {
     @FXML
     private LineChart<String, Number> lineEvolution;
     @FXML
+    private BarChart<String, Number> barCatForecast;
+    @FXML
     private Label forecastLabel, defaultCur;
     @FXML
     private ComboBox<String> displayCurrencyBox;
@@ -37,9 +40,10 @@ public class BudgetStatsController {
         var now = LocalDate.now();
         startField.setValue(now.withDayOfMonth(1));
         endField.setValue(now);
-        defaultCur.setText(CurrencyService.getDefaultCurrency(Database.getCurrentUserId()));
+        String def = CurrencyService.getDefaultCurrency(Database.getCurrentUserId());
+        defaultCur.setText(def);
         displayCurrencyBox.setItems(FXCollections.observableArrayList(BudgetQueries.listCurrencies()));
-        displayCurrencyBox.getSelectionModel().select(defaultCur.getText());
+        displayCurrencyBox.getSelectionModel().select(def);
         refreshAll();
     }
 
@@ -49,9 +53,9 @@ public class BudgetStatsController {
     }
 
     private void refreshAll() {
+        int uid = Database.getCurrentUserId();
         String s = BudgetQueries.iso(startField.getValue());
         String e = BudgetQueries.iso(endField.getValue());
-        int uid = Database.getCurrentUserId();
         String def = CurrencyService.getDefaultCurrency(uid);
         String disp = displayCurrencyBox.getValue();
         double conv = 1.0;
@@ -66,7 +70,7 @@ public class BudgetStatsController {
         for (var en : totals.entrySet()) pieData.add(new PieChart.Data(en.getKey(), Math.max(en.getValue() * conv, 0)));
         pieCategories.setData(pieData);
 
-        // 2) Bilans par personne (répartition réelle par participants)
+        // 2) Bilans par personne (réel)
         var bal = BudgetQueries.balanceByPerson(uid, s, e);
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Payé - Dû (réel)");
@@ -76,7 +80,7 @@ public class BudgetStatsController {
         }
         barByPerson.getData().setAll(series);
 
-        // 3) Écarts vs parts cibles (baseline)
+        // 3) Écarts vs parts cibles
         var vs = BudgetQueries.diffAgainstTargets(uid, s, e);
         XYChart.Series<String, Number> s2 = new XYChart.Series<>();
         s2.setName("Payé - Part cible");
@@ -86,13 +90,32 @@ public class BudgetStatsController {
         }
         barVsTargets.getData().setAll(s2);
 
-        // 4) Evolution (Line) + Forecast
+        // 4) Evolution + Forecast global
         var monthly = BudgetQueries.monthlySeries(uid, 18);
         XYChart.Series<String, Number> s1 = new XYChart.Series<>();
         s1.setName("Net / mois");
         for (var en : monthly.entrySet()) s1.getData().add(new XYChart.Data<>(en.getKey(), en.getValue() * conv));
         lineEvolution.getData().setAll(s1);
         double forecast = BudgetQueries.forecastNextMonth(monthly) * conv;
-        forecastLabel.setText("Prévision mois prochain ≈ " + String.format(Locale.US, "%.2f %s", forecast, disp));
+        forecastLabel.setText(String.format(java.util.Locale.US, "Prévision mois prochain ≈ %.2f %s", forecast, disp));
+
+        // 5) Prévision par catégorie (top 6 par dépenses sur la période)
+        var catNameById = BudgetQueries.listCategories(uid); // id->name
+        var totalsById = BudgetQueries.totalsByCategoryId(uid, s, e);
+        // tri par valeur desc, garder 6
+        var top = new ArrayList<Map.Entry<Integer, Double>>(totalsById.entrySet());
+        top.sort((a, b) -> Double.compare(Math.abs(b.getValue()), Math.abs(a.getValue())));
+        if (top.size() > 6) top = new ArrayList<>(top.subList(0, 6));
+
+        XYChart.Series<String, Number> sForecast = new XYChart.Series<>();
+        sForecast.setName("Prévision (mois prochain)");
+        for (var en : top) {
+            Integer cid = (en.getKey() == 0 ? null : en.getKey());
+            var seriesCat = BudgetQueries.monthlySeriesForCategory(uid, cid, 12);
+            double f = BudgetQueries.forecastNextMonth(seriesCat) * conv;
+            String name = (cid == null) ? "(Sans catégorie)" : catNameById.getOrDefault(cid, "Cat." + cid);
+            sForecast.getData().add(new XYChart.Data<>(name, f));
+        }
+        barCatForecast.getData().setAll(sForecast);
     }
 }

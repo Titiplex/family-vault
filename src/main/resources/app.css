@@ -67,3 +67,6 @@
 .tile-premium:hover {
     -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.18), 18, 0, 0, 6);
 }
+
+.badge {
+}

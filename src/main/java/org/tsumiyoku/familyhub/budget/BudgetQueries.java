@@ -277,4 +277,92 @@ public final class BudgetQueries {
         }
         return 0;
     }
+
+    /**
+     * Totaux par category_id (NULL=0) pour choisir les "top" catégories.
+     */
+    public static Map<Integer, Double> totalsByCategoryId(int userId, String start, String end) {
+        String sql = """
+                  SELECT COALESCE(category_id, 0) AS cid,
+                         SUM(CASE WHEN is_income=1 THEN -amount_default ELSE amount_default END)
+                  FROM budget_tx
+                  WHERE user_id=? AND deleted=0 AND tx_date BETWEEN ? AND ?
+                  GROUP BY cid ORDER BY 2 DESC
+                """;
+        LinkedHashMap<Integer, Double> out = new LinkedHashMap<>();
+        try (Connection c = Database.get(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setString(2, start);
+            ps.setString(3, end);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) out.put(rs.getInt(1), rs.getDouble(2));
+            }
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
+    /**
+     * Série mensuelle (YYYY-MM) d'une catégorie (categoryId==null => sans catégorie). Dépense positive, recette négative.
+     */
+    public static LinkedHashMap<String, Double> monthlySeriesForCategory(int userId, Integer categoryId, int monthsBack) {
+        String base = """
+                  SELECT substr(tx_date,1,7) AS ym,
+                         SUM(CASE WHEN is_income=1 THEN -amount_default ELSE amount_default END)
+                  FROM budget_tx WHERE user_id=? AND deleted=0 AND tx_date >= date('now','start of month','-%d months')
+                """.formatted(monthsBack);
+        String filter = (categoryId == null) ? " AND category_id IS NULL " : " AND category_id=? ";
+        String sql = base + filter + " GROUP BY ym ORDER BY ym";
+        LinkedHashMap<String, Double> out = new LinkedHashMap<>();
+        try (Connection c = Database.get(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            if (categoryId != null) ps.setInt(2, categoryId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) out.put(rs.getString(1), rs.getDouble(2));
+            }
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
+
+    /**
+     * Petit utilitaire d'intersection de périodes ISO (yyyy-MM-dd). Retourne null si sans recouvrement.
+     */
+    public static String[] intersectIso(String aStart, String aEnd, String bStart, String bEnd) {
+        java.time.LocalDate as = java.time.LocalDate.parse(aStart);
+        java.time.LocalDate ae = java.time.LocalDate.parse(aEnd);
+        java.time.LocalDate bs = java.time.LocalDate.parse(bStart);
+        java.time.LocalDate be = java.time.LocalDate.parse(bEnd);
+        var s = as.isAfter(bs) ? as : bs;
+        var e = ae.isBefore(be) ? ae : be;
+        if (s.isAfter(e)) return null;
+        return new String[]{s.toString(), e.toString()};
+    }
+
+    /**
+     * Transactions filtrées par catégorie (categoryId==null => sans catégorie).
+     */
+    public static java.util.List<Tx> listTxForCategory(int userId, String start, String end, Integer categoryId) {
+        String sql = """
+                    SELECT t.id, t.tx_date, COALESCE(c.name,''), t.currency, t.amount, t.amount_default, t.note, t.is_income, t.payer_user_id
+                    FROM budget_tx t LEFT JOIN budget_categories c ON c.id=t.category_id
+                    WHERE t.user_id=? AND t.deleted=0 AND t.tx_date BETWEEN ? AND ?
+                """ + (categoryId == null ? " AND t.category_id IS NULL " : " AND t.category_id=? ") +
+                " ORDER BY t.tx_date DESC, t.id DESC";
+        var out = new java.util.ArrayList<Tx>();
+        try (var c = org.tsumiyoku.familyhub.db.Database.get();
+             var ps = c.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setString(2, start);
+            ps.setString(3, end);
+            if (categoryId != null) ps.setInt(4, categoryId);
+            try (var rs = ps.executeQuery()) {
+                while (rs.next())
+                    out.add(new Tx(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4),
+                            rs.getDouble(5), rs.getDouble(6), rs.getString(7), rs.getInt(8) == 1, rs.getInt(9)));
+            }
+        } catch (Exception ignored) {
+        }
+        return out;
+    }
 }

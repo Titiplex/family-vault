@@ -54,7 +54,7 @@
             <Tab text="Évolution &amp; Prévision">
                 <VBox spacing="8">
                     <padding>
-                        <Insets topRightBottomLeft="10" />
+                        <Insets topRightBottomLeft="10"/>
                     </padding>
                     <LineChart fx:id="lineEvolution">
                         <xAxis>
@@ -66,6 +66,16 @@
                     </LineChart>
                     <Label fx:id="forecastLabel"/>
                 </VBox>
+            </Tab>
+            <Tab text="Prévision par catégorie">
+                <BarChart fx:id="barCatForecast">
+                    <xAxis>
+                        <CategoryAxis label="Catégorie"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis label="Prévision (net)"/>
+                    </yAxis>
+                </BarChart>
             </Tab>
         </TabPane>
     </center>

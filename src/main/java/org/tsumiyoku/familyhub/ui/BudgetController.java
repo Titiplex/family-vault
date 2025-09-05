@@ -3,15 +3,18 @@ package org.tsumiyoku.familyhub.ui;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
+import javafx.stage.Stage;
 import org.tsumiyoku.familyhub.budget.BudgetQueries;
 import org.tsumiyoku.familyhub.budget.CurrencyService;
 import org.tsumiyoku.familyhub.db.Database;
 import org.tsumiyoku.familyhub.util.Dialogs;
 import org.tsumiyoku.familyhub.util.SafeFXML;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -35,6 +38,12 @@ public class BudgetController {
     private ComboBox<String> payerBox;
     @FXML
     private CheckBox incomeCheck;
+
+    // Alerte limite + export
+    @FXML
+    private ProgressBar limitProgress;
+    @FXML
+    private Label limitLabel;
 
     // Participants
     @FXML
@@ -189,9 +198,9 @@ public class BudgetController {
     private void open(String fxml, String title) {
         try {
             var root = SafeFXML.load(fxml);
-            var s = new javafx.stage.Stage();
+            var s = new Stage();
             s.setTitle(title);
-            var sc = new javafx.scene.Scene((Parent) root, 980, 640);
+            var sc = new Scene(root, 980, 640);
             var css = getClass().getResource("/app.css");
             if (css != null) sc.getStylesheets().add(css.toExternalForm());
             s.setScene(sc);
@@ -372,6 +381,7 @@ public class BudgetController {
                     String.format(Locale.US, "%.2f", t.amountDefault()), t.note()
             ));
         table.setItems(rows);
+        updateLimitProgress(s, e);
         // (Optionnel) Alerte console si limites dépassées dans la période filtrée
         int uid = Database.getCurrentUserId();
         var limits = BudgetQueries.listLimits(uid);
@@ -420,5 +430,187 @@ public class BudgetController {
     @FXML
     public void onManageShares() {
         open("budget_shares.fxml", "Parts cibles du foyer");
+    }
+
+    @FXML
+    public void onExportCsv() {
+        String s = BudgetQueries.iso(filterStart.getValue());
+        String e = BudgetQueries.iso(filterEnd.getValue());
+        var chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Exporter les transactions");
+        chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("CSV", "*.csv"));
+        chooser.setInitialFileName("budget_" + s + "_" + e + ".csv");
+        var file = chooser.showSaveDialog(table.getScene().getWindow());
+        if (file == null) return;
+
+        int uid = Database.getCurrentUserId();
+        var txs = BudgetQueries.listTx(uid, s, e);
+
+        try (var w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8))) {
+            w.write("date,category,payer,currency,amount,rate_to_default,amount_default,is_income,note,participants\n");
+            for (var t : txs) {
+                // participants → "Alice:40|Bob:60"
+                String parts = "";
+                try (var c = Database.get();
+                     var ps = c.prepareStatement("SELECT p.participant_user_id, p.share_percent FROM budget_tx_participants p WHERE p.tx_id=? AND p.deleted=0")) {
+                    ps.setInt(1, t.id());
+                    try (var rs = ps.executeQuery()) {
+                        StringBuilder sb = new StringBuilder();
+                        parts = getString(rs, sb);
+                    }
+                }
+                String payer = BudgetQueries.listUsers().getOrDefault(t.payerUserId(), "U" + t.payerUserId());
+                writeCsv(w, t, parts, payer);
+            }
+        } catch (Exception ex) {
+            Dialogs.error("Export CSV", "Échec de l'export", ex);
+        }
+    }
+
+    private String rateForRow(BudgetQueries.Tx t) {
+        // On peut recomposer: amount_default / amount (évite un SELECT)
+        if (Math.abs(t.amount()) < 1e-9) return "0";
+        double r = t.amountDefault() / t.amount();
+        return String.format(java.util.Locale.US, "%.6f", r);
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    private static String csv(String s) {
+        String v = s == null ? "" : s;
+        if (v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r")) {
+            v = v.replace("\"", "\"\"");
+            return "\"" + v + "\"";
+        }
+        return v;
+    }
+
+    private void updateLimitProgress(String start, String end) {
+        var limits = BudgetQueries.listLimits(Database.getCurrentUserId());
+        double bestRatio = -1;
+        String bestLabel = "Aucune limite active sur la période";
+        boolean isSaveGoal = false;
+
+        for (var l : limits) {
+            String[] inter = BudgetQueries.intersectIso(start, end, l.start(), l.end());
+            if (inter == null) continue;
+            double used = BudgetQueries.spentFor(Database.getCurrentUserId(), inter[0], inter[1], l.categoryId());
+            double ratio;
+            String label;
+            boolean save = "save".equalsIgnoreCase(l.goalType());
+            if (save) {
+                double saved = Math.max(0, -used);
+                ratio = (l.limit() <= 0) ? 0 : saved / l.limit();
+                label = String.format(java.util.Locale.US, "Épargne %s : %.2f / %.2f",
+                        l.categoryName(), saved, l.limit());
+            } else {
+                ratio = (l.limit() <= 0) ? 0 : used / l.limit();
+                label = String.format(java.util.Locale.US, "Limite %s : %.2f / %.2f",
+                        l.categoryName(), used, l.limit());
+            }
+            if (ratio > bestRatio) {
+                bestRatio = ratio;
+                bestLabel = label;
+                isSaveGoal = save;
+            }
+        }
+
+        if (limitProgress == null || limitLabel == null) return;
+
+        if (bestRatio < 0) { // aucune limite concernée
+            limitProgress.setProgress(0);
+            limitProgress.setStyle(""); // reset couleur
+            limitLabel.setText("Aucune");
+            return;
+        }
+
+        // Couleurs : vert < 60%, orange [60–100%], rouge > 100% (ou épargne atteinte)
+        double r = bestRatio;
+        String color;
+        if (!isSaveGoal) {
+            if (r > 1.0) color = "#c62828";            // rouge
+            else if (r >= 0.60) color = "#ef6c00";     // orange
+            else color = "#2e7d32";                    // vert
+        } else {
+            // objectif d'épargne: vert si >=100%, orange si [60–100), rouge <60%
+            if (r >= 1.0) color = "#2e7d32";
+            else if (r >= 0.60) color = "#ef6c00";
+            else color = "#c62828";
+        }
+
+        limitProgress.setProgress(Math.min(1.0, Math.abs(r)));
+        limitProgress.setStyle("-fx-accent: " + color + ";");
+        limitLabel.setText(bestLabel + ((!isSaveGoal && r > 1.0) ? "  (DÉPASSÉE)" : (isSaveGoal && r >= 1.0 ? "  (ATTEINTE)" : "")));
+    }
+
+    @FXML
+    public void onExportCsvByCategory() {
+        // 1) choix catégorie
+        var names = new ArrayList<String>();
+        names.add("(Sans catégorie)");
+        names.addAll(categories.values());
+        var dlg = new ChoiceDialog<>(names.getFirst(), names);
+        dlg.setTitle("Exporter CSV (catégorie)");
+        dlg.setHeaderText("Choisis la catégorie à exporter sur la période visible");
+        var res = dlg.showAndWait();
+        if (res.isEmpty()) return;
+        String chosen = res.get();
+        Integer catId = null;
+        if (!"(Sans catégorie)".equals(chosen)) catId = catByName.get(chosen);
+
+        // 2) chemin
+        String s = BudgetQueries.iso(filterStart.getValue());
+        String e = BudgetQueries.iso(filterEnd.getValue());
+        var chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Exporter les transactions – " + chosen);
+        chooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("CSV", "*.csv"));
+        chooser.setInitialFileName(("budget_" + (chosen.replace(' ', '_')) + "_" + s + "_" + e + ".csv").replaceAll("[()]", ""));
+        var file = chooser.showSaveDialog(table.getScene().getWindow());
+        if (file == null) return;
+
+        // 3) données
+        int uid = Database.getCurrentUserId();
+        var txs = BudgetQueries.listTxForCategory(uid, s, e, catId);
+        try (var w = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), java.nio.charset.StandardCharsets.UTF_8))) {
+            w.write("date,category,payer,currency,amount,rate_to_default,amount_default,is_income,note,participants\n");
+            for (var t : txs) {
+                String parts = "";
+                try (var c = Database.get();
+                     var ps = c.prepareStatement("SELECT participant_user_id, share_percent FROM budget_tx_participants WHERE tx_id=? AND deleted=0")) {
+                    ps.setInt(1, t.id());
+                    try (var rs = ps.executeQuery()) {
+                        var sb = new StringBuilder();
+                        parts = getString(rs, sb);
+                    }
+                }
+                String payer = BudgetQueries.listUsers().getOrDefault(t.payerUserId(), "U" + t.payerUserId());
+                writeCsv(w, t, parts, payer);
+            }
+        } catch (Exception ex) {
+            org.tsumiyoku.familyhub.util.Dialogs.error("Export CSV (catégorie)", "Échec", ex);
+        }
+    }
+
+    private String getString(ResultSet rs, StringBuilder sb) throws SQLException {
+        String parts;
+        while (rs.next()) {
+            int pid = rs.getInt(1);
+            double sh = rs.getDouble(2);
+            String name = BudgetQueries.listUsers().getOrDefault(pid, "U" + pid);
+            if (!sb.isEmpty()) sb.append("|");
+            sb.append(name).append(":").append(String.format(Locale.US, "%.1f", sh));
+        }
+        parts = sb.toString();
+        return parts;
+    }
+
+    private void writeCsv(BufferedWriter w, BudgetQueries.Tx t, String parts, String payer) throws IOException {
+        w.write(csv(t.date()) + "," + csv(nullToEmpty(t.category())) + "," + csv(payer) + "," + csv(t.currency()) + "," +
+                String.format(Locale.US, "%.2f", t.amount()) + "," +
+                rateForRow(t) + "," +
+                String.format(Locale.US, "%.2f", t.amountDefault()) + "," +
+                (t.income() ? "1" : "0") + "," + csv(nullToEmpty(t.note())) + "," + csv(parts) + "\n");
     }
 }

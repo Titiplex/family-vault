@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
             fx:controller="org.tsumiyoku.familyhub.ui.MainController"
             stylesheets="@../app.css" styleClass="root-bg">
@@ -15,7 +15,9 @@
                 </Menu>
             </MenuBar>
             <HBox spacing="12">
-                <padding><Insets topRightBottomLeft="16"/></padding>
+                <padding>
+                    <Insets topRightBottomLeft="16"/>
+                </padding>
                 <Label text="Essentials" styleClass="section-title"/>
             </HBox>
         </VBox>
@@ -89,7 +91,9 @@
             </GridPane>
 
             <HBox spacing="12">
-                <padding><Insets topRightBottomLeft="16"/></padding>
+                <padding>
+                    <Insets topRightBottomLeft="16"/>
+                </padding>
                 <Label text="More" styleClass="section-title"/>
             </HBox>
 

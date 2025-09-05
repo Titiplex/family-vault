@@ -10,6 +10,8 @@
             <padding>
                 <Insets topRightBottomLeft="12"/>
             </padding>
+
+            <!-- Barre d’actions -->
             <HBox spacing="12" alignment="CENTER_LEFT">
                 <Label text="Budget" styleClass="section-title"/>
                 <Pane HBox.hgrow="ALWAYS"/>
@@ -26,8 +28,17 @@
                 <Button text="Parts cibles…" onAction="#onManageShares"/>
                 <Button text="Limites…" onAction="#onManageLimits"/>
                 <Button text="Analyses…" onAction="#onOpenStats"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Exporter CSV…" onAction="#onExportCsv"/>
+                <Button text="Exporter CSV (catégorie)…" onAction="#onExportCsvByCategory"/>
             </HBox>
 
+            <!-- Indicateur de limite active -->
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="Limite active :"/>
+                <ProgressBar fx:id="limitProgress" prefWidth="280"/>
+                <Label fx:id="limitLabel"/>
+            </HBox>
         </VBox>
     </top>
 
