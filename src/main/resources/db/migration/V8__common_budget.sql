@@ -26,6 +26,7 @@ BEGIN
 END;
 
 /* Oplog pour autosync */
+
 CREATE TRIGGER IF NOT EXISTS op_share_targets_ai
     AFTER INSERT
     ON budget_share_targets

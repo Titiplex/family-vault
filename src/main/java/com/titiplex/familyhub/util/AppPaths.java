@@ -1,8 +1,10 @@
 package com.titiplex.familyhub.util;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public final class AppPaths {
     private AppPaths() {
@@ -28,8 +30,15 @@ public final class AppPaths {
     }
 
     public static Path dbFile() {
-        return dataDir().resolve("app.db");
+        Path dir = dataDir();
+        try {
+            Files.createDirectories(dir);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return dir.resolve("app.db");
     }
+
 
     public static Path mediaDir() {
         return ensure(dataDir().resolve("media"));
@@ -45,5 +54,18 @@ public final class AppPaths {
         } catch (IOException ignored) {
         }
         return p;
+    }
+
+    public static Path resolveMigrationDir() {
+        String appPath = System.getProperty("jpackage.app-path"); // null en dev
+        if (appPath != null) {
+            // Windows : <install>\FamilyHub.exe et les jars dans <install>\app\
+            Path installDir = Path.of(appPath).getParent();
+            Path dir = installDir.resolve("app").resolve("db").resolve("migration");
+            if (Files.isDirectory(dir)) return dir;
+        }
+        // Dev fallback (gradle run)
+        Path dev = Path.of("src", "installer", "app", "db", "migration");
+        return Files.isDirectory(dev) ? dev : null;
     }
 }

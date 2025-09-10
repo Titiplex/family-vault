@@ -1,6 +1,7 @@
 PRAGMA foreign_keys = ON;
 
-/* --- Catégories --- */
+--- Catégories
+
 CREATE TABLE IF NOT EXISTS budget_categories
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +28,8 @@ BEGIN
     UPDATE budget_categories SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE rowid = NEW.rowid;
 END;
 
-/* --- Taux FX historiques --- */
+--- Taux FX historiques
+
 CREATE TABLE IF NOT EXISTS fx_rates
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,14 +56,16 @@ BEGIN
     UPDATE fx_rates SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE rowid = NEW.rowid;
 END;
 
-/* --- Paramètres utilisateur (devise par défaut) --- */
+--- Paramètres utilisateur (devise par défaut)
+
 CREATE TABLE IF NOT EXISTS user_settings
 (
     user_id          INTEGER PRIMARY KEY,
     default_currency TEXT NOT NULL
 );
 
-/* --- Transactions budget --- */
+--- Transactions budget
+
 CREATE TABLE IF NOT EXISTS budget_tx
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,7 +101,8 @@ BEGIN
     UPDATE budget_tx SET updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE rowid = NEW.rowid;
 END;
 
-/* Journal des parts par participant (pour répartition) */
+--- Journal des parts par participant (pour répartition)
+
 CREATE TABLE IF NOT EXISTS budget_tx_participants
 (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,7 +129,8 @@ BEGIN
     UPDATE budget_tx_participants SET updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE rowid = NEW.rowid;
 END;
 
-/* Limites & objectifs (par période) */
+--- Limites & objectifs (par période)
+
 CREATE TABLE IF NOT EXISTS budget_limits
 (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -154,7 +160,8 @@ BEGIN
     UPDATE budget_limits SET updated_at=strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE rowid = NEW.rowid;
 END;
 
-/* --- Oplog (auto-sync) pour les nouvelles tables --- */
+--- Oplog (auto-sync) pour les nouvelles tables
+
 CREATE TRIGGER IF NOT EXISTS op_budget_tx_ai
     AFTER INSERT
     ON budget_tx

@@ -1,5 +1,9 @@
 package com.titiplex.familyhub.ui;
 
+import com.titiplex.familyhub.db.Database;
+import com.titiplex.familyhub.util.Dialogs;
+import com.titiplex.familyhub.util.Password;
+import com.titiplex.familyhub.util.SafeFXML;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.Parent;
@@ -8,10 +12,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
-import com.titiplex.familyhub.db.Database;
-import com.titiplex.familyhub.util.Dialogs;
-import com.titiplex.familyhub.util.Password;
-import com.titiplex.familyhub.util.SafeFXML;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -48,7 +48,7 @@ public class LoginController {
     @FXML
     public void initialize() {
         try (Connection c = Database.get();
-             ResultSet rs = c.createStatement().executeQuery("SELECT id, name FROM users ORDER BY name")) {
+             ResultSet rs = c.createStatement().executeQuery("select id, name from users order by name")) {
             var list = FXCollections.<User>observableArrayList();
             while (rs.next()) {
                 list.add(new User(rs.getInt(1), rs.getString(2)));
@@ -56,7 +56,7 @@ public class LoginController {
             userCombo.setItems(list);
             if (!list.isEmpty()) userCombo.getSelectionModel().selectFirst();
         } catch (Exception e) {
-            Dialogs.error("Erreur", "Chargement des utilisateurs", e);
+            Dialogs.error("Erreur", "Chargement des utilisateurs ", e);
         }
     }
 
@@ -64,28 +64,46 @@ public class LoginController {
     public void onCreate() {
         String name = newUserName.getText() == null ? "" : newUserName.getText().trim();
         String email = newUserEmail.getText() == null ? "" : newUserEmail.getText().trim();
-        String pass = newUserPass != null ? newUserPass.getText() : "";
+        String pass = newUserPass == null ? "" : newUserPass.getText().trim();
+
         if (name.isEmpty()) {
-            Dialogs.error("Validation", "Nom requis", null);
+            Dialogs.error("Validation", "Nom requis ", new Exception("Nom requis "));
             return;
         }
+        if (pass.isEmpty()) {
+            Dialogs.error("Validation", "Password requis ", new Exception("Password requis "));
+            return;
+        }
+
         try (Connection c = Database.get()) {
             boolean hasPwdCol = hasPasswordHashColumn(c);
             String sql = hasPwdCol
                     ? "INSERT INTO users(name, email, password_hash) VALUES(?, ?, ?)"
                     : "INSERT INTO users(name, email) VALUES(?, ?)";
+
             try (PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setString(1, name);
-                ps.setString(2, email.isEmpty() ? null : email);
+
+                if (email.isEmpty()) ps.setNull(2, java.sql.Types.VARCHAR);
+                else ps.setString(2, email);
+
                 if (hasPwdCol) {
-                    ps.setString(3, Password.hash(pass));
+                    String h = pass.isBlank() ? null : Password.hash(pass);
+                    if (h == null) Dialogs.error("Validation", "Erreur de hashage du mot de passe", null);
+                    else ps.setString(3, h);
                 }
+
                 ps.executeUpdate();
             }
+
             initialize(); // reload list
             newUserName.clear();
             newUserEmail.clear();
             if (newUserPass != null) newUserPass.clear();
+
+        } catch (SQLException e) {
+            // aide à diagnostiquer "colonne inconnue" vs autre
+            Dialogs.error("Erreur", "Création utilisateur (" + e.getMessage() + ")", e);
         } catch (Exception e) {
             Dialogs.error("Erreur", "Création utilisateur", e);
         }
@@ -103,7 +121,7 @@ public class LoginController {
             String hash = null;
             // Tolère les anciennes bases sans la colonne password_hash
             if (hasPasswordHashColumn(c)) {
-                try (PreparedStatement ps = c.prepareStatement("SELECT password_hash FROM users WHERE id=?")) {
+                try (PreparedStatement ps = c.prepareStatement("select password_hash from users where id=?")) {
                     ps.setInt(1, u.id);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) hash = rs.getString(1);
@@ -139,7 +157,7 @@ public class LoginController {
      * Retourne true si la colonne users.password_hash existe (DB déjà migrée en V2).
      */
     private boolean hasPasswordHashColumn(Connection c) {
-        try (PreparedStatement ps = c.prepareStatement("PRAGMA table_info(users)");
+        try (PreparedStatement ps = c.prepareStatement("pragma table_info(users)");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 if ("password_hash".equalsIgnoreCase(rs.getString("name"))) return true;

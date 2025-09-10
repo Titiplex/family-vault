@@ -37,14 +37,14 @@ javafx {
 
 dependencies {
     // https://mvnrepository.com/artifact/org.flywaydb/flyway-core
-    implementation("org.flywaydb:flyway-core:10.22.0")
+//    implementation("org.flywaydb:flyway-core:10.22.0")
     // https://mvnrepository.com/artifact/at.favre.lib/bcrypt
     implementation("at.favre.lib:bcrypt:0.10.2")
     // https://mvnrepository.com/artifact/org.bitlet/weupnp
     implementation("org.bitlet:weupnp:0.1.4")
     // https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
-    implementation("org.xerial:sqlite-jdbc:3.50.3.0")
-    implementation("org.flywaydb:flyway-community-db-support:10.22.0")
+    implementation("org.xerial:sqlite-jdbc:3.45.3.0")
+//    implementation("org.flywaydb:flyway-community-db-support:10.22.0")
     // https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api
     implementation("org.apache.logging.log4j:log4j-api:2.25.1")
     runtimeOnly("org.apache.logging.log4j:log4j-core:2.25.1")
@@ -80,13 +80,26 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+// build.gradle.kts
+tasks.register<Copy>("stageMigrationsForInstaller") {
+    from("src/main/resources/db/migration")
+    into("src/installer/app/db/migration")   // sera copié à côté de l'exécutable
+}
+
+tasks.named("jpackage") {
+    dependsOn("stageMigrationsForInstaller")
+}
+
 jlink {
     imageZip.set(layout.buildDirectory.file("/distributions/app-${javafx.platform.classifier}.zip"))
-    options.set(listOf("--strip-debug", "--compress=2", "--no-header-files", "--no-man-pages"))
+    options.set(listOf("--strip-debug", "--compress=2", "--no-header-files", "--no-man-pages",  "--bind-services"))
 
-    forceMerge("flyway-core", "bcrypt", "weupnp", "sqlite-jdbc")
+    forceMerge("bcrypt", "weupnp")
 
-    addExtraDependencies("org.apache.logging.log4j:log4j-api:2.25.1")
+    addExtraDependencies(
+        "org.apache.logging.log4j:log4j-api:2.25.1",
+//        "org.flywaydb:flyway-community-db-support:10.22.0"
+    )
 
     mergedModule {
         requires("java.sql")
@@ -98,9 +111,14 @@ jlink {
         requires("java.naming")      // JNDI utilisé indirectement par certaines libs
         uses("java.sql.Driver")                          // pour sqlite-jdbc
         // Flyway utilise des plugins via ServiceLoader : on couvre l’API publique
-        uses("org.flywaydb.core.extensibility.Plugin")   // safe, côté API Flyway
+//        uses("org.flywaydb.core.extensibility.Plugin")   // safe, côté API Flyway
         // Tu peux en ajouter d'autres si besoin apparaît dans les logs :
         // uses("org.flywaydb.core.api.logging.LogCreator")
+        // Providers perdus par le merge → on les redéclare
+//        provides("java.sql.Driver").with("org.sqlite.JDBC")
+//        provides(
+//            "org.flywaydb.core.extensibility.Plugin"
+//        ).with("org.flywaydb.community.database.sqlite.SQLiteDatabaseType")
     }
 
     launcher {
@@ -137,7 +155,8 @@ jlink {
             "--win-menu",                 // entrée Menu Démarrer
             "--win-menu-group", "FamilyHub",
             "--win-shortcut",             // raccourci Bureau
-            "--win-shortcut-prompt"       // propose la création de raccourcis pendant l’install
+            "--win-shortcut-prompt",       // propose la création de raccourcis pendant l’install
+            "--description", "Application de gestion de famille – FamilyHub"
         )
 
         // Description de l’app dans l’installeur
@@ -155,6 +174,6 @@ jlink {
  */
 tasks.register("makeInstaller") {
     group = "distribution"
-    description = "Build runtime image + MSI installer via jpackage"
+    description = "Build runtime image + MSI/EXE installer via jpackage"
     dependsOn("jpackage")
 }

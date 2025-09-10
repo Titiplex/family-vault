@@ -17,12 +17,13 @@ import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public final class SyncService {
     private static final int DEFAULT_PORT = 56565;
-    private static final ExecutorService EXEC = Executors.newCachedThreadPool();
-    private static ServerSocket server;
-    private static int listenPort = DEFAULT_PORT;
+    private static volatile ExecutorService EXEC;
+    private static volatile ServerSocket server;
+    private static volatile int listenPort = DEFAULT_PORT;
     private static volatile boolean running = false;
 
     public static int getListenPort() {
@@ -31,6 +32,21 @@ public final class SyncService {
 
     public static void setListenPort(int p) {
         listenPort = p;
+    }
+
+    private static void ensureExec() {
+        if (EXEC == null) {
+            synchronized (SyncService.class) {
+                if (EXEC == null) {
+                    // Pool *daemon* pour ne jamais bloquer la sortie de la JVM
+                    EXEC = Executors.newCachedThreadPool(r -> {
+                        Thread t = new Thread(r, "sync-exec");
+                        t.setDaemon(true);
+                        return t;
+                    });
+                }
+            }
+        }
     }
 
     public static void syncAllKnownPeers() {
@@ -43,22 +59,33 @@ public final class SyncService {
         }
     }
 
-    // 3) au démarrage serveur, tenter un mapping UPnP (best-effort)
+    // Démarre le serveur (UPnP best-effort)
     public static void startServer() {
         if (running) return;
         running = true;
-        // Tentative UPnP (non bloquant) pour l'Internet sans serveur tiers
+        ensureExec();
+
+        // UPnP en best-effort ; même si ça échoue, on peut accepter en local/LAN
         Upnp.tryMapTcpPort(listenPort, "FamilyHub P2P");
+
         EXEC.submit(() -> {
             try (ServerSocket ss = new ServerSocket(listenPort)) {
                 server = ss;
                 while (running) {
                     Socket s = ss.accept();
-                    EXEC.submit(() -> handleConnection(s, /*isServer*/true));
+                    ensureExec();
+                    EXEC.submit(() -> handleConnection(s, /*isServer*/ true));
                 }
             } catch (Exception e) {
+                // Si on ferme le serveur côté stopServer(), accept() lèvera une exception : normal
                 running = false;
-                Dialogs.error("Sync", "Serveur arrêté", e);
+                // On évite d'afficher une erreur si on était en arrêt volontaire
+                if (!Thread.currentThread().isInterrupted()) {
+                    // Optionnel : logger en debug ici7
+                    Dialogs.error("Sync", "Erreur serveur", e);
+                }
+            } finally {
+                server = null;
             }
         });
     }
@@ -66,36 +93,52 @@ public final class SyncService {
     public static void stopServer() {
         running = false;
         try {
-            if (server != null) server.close();
-        } catch (Exception ignored) {
+            ServerSocket ss = server;
+            if (ss != null && !ss.isClosed()) {
+                try {
+                    ss.close();
+                } catch (Exception ignored) {
+                }
+            }
+        } finally {
+            if (EXEC != null) {
+                EXEC.shutdownNow();
+                try {
+                    EXEC.awaitTermination(2, TimeUnit.SECONDS);
+                } catch (InterruptedException ignored) {
+                }
+                EXEC = null;
+            }
+            server = null;
         }
     }
 
     public static void connectToPeer(String host, int port) {
+        ensureExec();
         EXEC.submit(() -> {
             try (Socket s = new Socket(host, port)) {
-                handleConnection(s, true);
+                handleConnection(s, false);
             } catch (Exception e) {
                 Dialogs.error("Sync", "Connexion pair " + host + ":" + port, e);
             }
         });
     }
 
-    private static void handleConnection(Socket s, boolean b) {
+    private static void handleConnection(Socket s, boolean isServerSide) {
         try (Socket autoClose = s;
              InputStream in = s.getInputStream();
              OutputStream out = s.getOutputStream()) {
 
             DeviceIdentity me = DeviceIdentity.get();
 
-// 1) Hello clair signé
+            // 1) Hello clair signé
             byte[] toSign = Protocol.helloToBeSigned(me.deviceId, me.publicKey, me.signPublicKey);
             String sig = Crypto.signEd25519(toSign, me.signPrivateKey);
             Protocol.sendFrame(out, Protocol.toJson(new Protocol.Hello("hello", me.deviceId, me.publicKey, me.signPublicKey, sig)));
 
             Protocol.Hello peerHello = Protocol.fromJson(Protocol.recvFrame(in), Protocol.Hello.class);
 
-// 2) Vérif pair + vérif signature Ed25519
+            // 2) Vérif pair + vérif signature Ed25519
             PeerStore.Peer known = null;
             String peerId = "";
             for (PeerStore.Peer p : PeerStore.list()) {
@@ -108,15 +151,13 @@ public final class SyncService {
             if (known == null) throw new RuntimeException("Pair inconnu: " + peerHello.deviceId());
 
             byte[] peerToSign = Protocol.helloToBeSigned(peerHello.deviceId(), peerHello.publicKey(), peerHello.signPublicKey());
-            boolean okSig = Crypto.verifyEd25519(
-                    peerToSign, peerHello.signature(), known.signPublicKey());
+            boolean okSig = Crypto.verifyEd25519(peerToSign, peerHello.signature(), known.signPublicKey());
             if (!okSig) throw new RuntimeException("Signature HELLO invalide pour " + peerHello.deviceId());
 
             // 3) ECDH + HKDF (comme avant)
             String info = (me.deviceId.compareTo(peerHello.deviceId()) < 0 ?
                     me.deviceId + "|" + peerHello.deviceId() : peerHello.deviceId() + "|" + me.deviceId) + "|" + known.pairingSecretHash();
             byte[] sessionKey = Crypto.deriveSharedKey(me.privateKey, peerHello.publicKey(), info);
-
 
             // 4) Echange des curseurs (chiffré)
             String sinceLocal = PeerStore.lastSyncAt(peerId);
@@ -217,13 +258,13 @@ public final class SyncService {
     }
 
     private static int resolveUserId(Connection c, String userUuid, String name, String email) throws Exception {
-        try (PreparedStatement ps = c.prepareStatement("SELECT id FROM users WHERE uuid=?")) {
+        try (PreparedStatement ps = c.prepareStatement("select id from users where uuid=?")) {
             ps.setString(1, userUuid);
             ResultSet rs = ps.executeQuery();
             if (rs.next()) return rs.getInt(1);
         }
         // créer l'utilisateur fantôme (sans password_hash)
-        try (PreparedStatement ins = c.prepareStatement("INSERT INTO users(uuid,name,email,deleted) VALUES(?,?,?,0)", Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement ins = c.prepareStatement("insert into users(uuid,name,email,deleted) values(?,?,?,0)", Statement.RETURN_GENERATED_KEYS)) {
             ins.setString(1, userUuid);
             ins.setString(2, name);
             ins.setString(3, email);

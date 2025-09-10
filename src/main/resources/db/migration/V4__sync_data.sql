@@ -1,6 +1,7 @@
 PRAGMA foreign_keys= ON;
 
 /* USERS */
+
 UPDATE users
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE users
@@ -21,6 +22,7 @@ BEGIN
 END;
 
 /* LISTS */
+
 UPDATE lists
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE lists
@@ -41,6 +43,7 @@ BEGIN
 END;
 
 /* EVENTS */
+
 UPDATE events
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE events
@@ -61,6 +64,7 @@ BEGIN
 END;
 
 /* RECIPES */
+
 UPDATE recipes
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE recipes
@@ -81,6 +85,7 @@ BEGIN
 END;
 
 /* MESSAGES */
+
 UPDATE messages
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE messages
@@ -101,6 +106,7 @@ BEGIN
 END;
 
 /* PHOTOS */
+
 UPDATE photos
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE photos
@@ -121,6 +127,7 @@ BEGIN
 END;
 
 /* CONTACTS */
+
 UPDATE contacts
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE contacts
@@ -141,6 +148,7 @@ BEGIN
 END;
 
 /* ACTIVITIES */
+
 UPDATE activities
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE activities
@@ -161,6 +169,7 @@ BEGIN
 END;
 
 /* DOCUMENTS */
+
 UPDATE documents
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE documents
@@ -181,6 +190,7 @@ BEGIN
 END;
 
 /* BUDGET */
+
 UPDATE budget
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE budget
@@ -201,6 +211,7 @@ BEGIN
 END;
 
 /* MEALS */
+
 UPDATE meals
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE meals
@@ -221,6 +232,7 @@ BEGIN
 END;
 
 /* TIMETABLE */
+
 UPDATE timetable
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE timetable
@@ -241,6 +253,7 @@ BEGIN
 END;
 
 /* PLACES */
+
 UPDATE places
 SET uuid = COALESCE(uuid, lower(hex(randomblob(16))));
 UPDATE places

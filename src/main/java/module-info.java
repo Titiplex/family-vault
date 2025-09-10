@@ -1,8 +1,9 @@
 module FamilyHub.main {
+//    uses org.flywaydb.core.extensibility.Plugin;
     requires bcrypt;
     requires com.fasterxml.jackson.annotation;
     requires com.fasterxml.jackson.databind;
-    requires flyway.core;
+//    requires flyway.core;
     requires java.datatransfer;
     requires java.sql;
     requires javafx.base;
@@ -12,6 +13,7 @@ module FamilyHub.main {
     requires weupnp;
     requires java.desktop;
     requires org.apache.logging.log4j;
+    requires org.xerial.sqlitejdbc;
 
     // Donne accès à JavaFX pour instancier Application(Main)
     exports com.titiplex.familyhub;

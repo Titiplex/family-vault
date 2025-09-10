@@ -1,6 +1,7 @@
 PRAGMA foreign_keys= ON;
 
 /* USERS */
+
 ALTER TABLE users
     ADD COLUMN uuid TEXT;
 ALTER TABLE users
@@ -9,6 +10,7 @@ ALTER TABLE users
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* LISTS */
+
 ALTER TABLE lists
     ADD COLUMN uuid TEXT;
 ALTER TABLE lists
@@ -17,6 +19,7 @@ ALTER TABLE lists
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* EVENTS */
+
 ALTER TABLE events
     ADD COLUMN uuid TEXT;
 ALTER TABLE events
@@ -25,6 +28,7 @@ ALTER TABLE events
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* RECIPES */
+
 ALTER TABLE recipes
     ADD COLUMN uuid TEXT;
 ALTER TABLE recipes
@@ -33,6 +37,7 @@ ALTER TABLE recipes
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* MESSAGES */
+
 ALTER TABLE messages
     ADD COLUMN uuid TEXT;
 ALTER TABLE messages
@@ -41,6 +46,7 @@ ALTER TABLE messages
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* PHOTOS */
+
 ALTER TABLE photos
     ADD COLUMN uuid TEXT;
 ALTER TABLE photos
@@ -49,6 +55,7 @@ ALTER TABLE photos
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* CONTACTS */
+
 ALTER TABLE contacts
     ADD COLUMN uuid TEXT;
 ALTER TABLE contacts
@@ -57,6 +64,7 @@ ALTER TABLE contacts
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* ACTIVITIES */
+
 ALTER TABLE activities
     ADD COLUMN uuid TEXT;
 ALTER TABLE activities
@@ -65,6 +73,7 @@ ALTER TABLE activities
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* DOCUMENTS */
+
 ALTER TABLE documents
     ADD COLUMN uuid TEXT;
 ALTER TABLE documents
@@ -73,6 +82,7 @@ ALTER TABLE documents
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* BUDGET */
+
 ALTER TABLE budget
     ADD COLUMN uuid TEXT;
 ALTER TABLE budget
@@ -81,6 +91,7 @@ ALTER TABLE budget
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* MEALS */
+
 ALTER TABLE meals
     ADD COLUMN uuid TEXT;
 ALTER TABLE meals
@@ -89,6 +100,7 @@ ALTER TABLE meals
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* TIMETABLE */
+
 ALTER TABLE timetable
     ADD COLUMN uuid TEXT;
 ALTER TABLE timetable
@@ -97,6 +109,7 @@ ALTER TABLE timetable
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* PLACES */
+
 ALTER TABLE places
     ADD COLUMN uuid TEXT;
 ALTER TABLE places
@@ -105,6 +118,7 @@ ALTER TABLE places
     ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
 
 /* P2P tables (créations simples = OK ici) */
+
 CREATE TABLE IF NOT EXISTS trusted_peers
 (
     device_id           TEXT PRIMARY KEY,
