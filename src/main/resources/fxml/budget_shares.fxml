@@ -5,7 +5,7 @@
 <?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.VBox?>
 <VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="org.tsumiyoku.familyhub.ui.BudgetSharesController" spacing="10">
+      fx:controller="com.titiplex.familyhub.ui.BudgetSharesController" spacing="10">
     <padding>
         <Insets topRightBottomLeft="12"/>
     </padding>

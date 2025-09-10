@@ -4,7 +4,7 @@
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.*?>
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-            fx:controller="org.tsumiyoku.familyhub.ui.GalleryController"
+            fx:controller="com.titiplex.familyhub.ui.GalleryController"
             styleClass="root-bg">
     <top>
         <HBox spacing="12">

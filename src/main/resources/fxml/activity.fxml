@@ -3,7 +3,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-            fx:controller="org.tsumiyoku.familyhub.ui.ActivityController"
+            fx:controller="com.titiplex.familyhub.ui.ActivityController"
             styleClass="root-bg">
     <top>
         <HBox spacing="12">

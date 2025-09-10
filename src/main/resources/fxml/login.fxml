@@ -4,7 +4,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-      fx:controller="org.tsumiyoku.familyhub.ui.LoginController"
+      fx:controller="com.titiplex.familyhub.ui.LoginController"
       alignment="CENTER" spacing="16" stylesheets="@../app.css" styleClass="root-bg">
     <Label text="FamilyHub" styleClass="app-title"/>
     <Label text="Choisissez un utilisateur ou créez-en un nouveau" styleClass="muted"/>

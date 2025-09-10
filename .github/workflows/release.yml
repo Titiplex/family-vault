@@ -1,0 +1,46 @@
+name: Build installers
+on:
+  push:
+    tags: [ 'v*.*.*' ]   # lance sur tag vX.Y.Z
+  workflow_dispatch:
+
+jobs:
+  package:
+    strategy:
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Temurin JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            m2-${{ runner.os }}-
+
+      # Outils OS
+      - name: Windows - Install WiX (only if MSI)
+        if: runner.os == 'Windows' && contains(needs.set_type.outputs.type, 'MSI') == true
+        run: choco install wixtoolset --no-progress
+
+      - name: Linux - Packaging deps
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y fakeroot dpkg-dev
+
+      - name: Build
+        run: mvn -DskipTests clean package
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ runner.os }}
+          path: target/installer/**

@@ -3,7 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
-            fx:controller="org.tsumiyoku.familyhub.ui.SyncController"
+            fx:controller="com.titiplex.familyhub.ui.SyncController"
             styleClass="root-bg">
     <top>
         <HBox spacing="12">
